@@ -15,6 +15,7 @@ struct view_stats {
     uint32_t last_count;
     uint32_t rcode[RCODE_MAX_NUM];
     uint32_t rtype[RTYPE_MAX_NUM];
+    uint64_t bindwidth;
 };
 
 typedef enum stats_type {

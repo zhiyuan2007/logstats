@@ -50,7 +50,7 @@ bool heap_reach_roof(heap_t *hbt, int roof)
     return  hbt->len >= roof;
 }
 
-void heap_traverse(heap_t *hbt, traverse_func func)
+void heap_traverse(heap_t *hbt, traverse_func1 func)
 {
     int i = 0;
     for (; i < hbt->len; i++)

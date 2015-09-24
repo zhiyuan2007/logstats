@@ -20,6 +20,7 @@
 #include "zip_addr.h"
 #include "zip_socket.h"
 #include "statsmessage.pb-c.h"
+#include "dig_radix_tree.h"
 #include "adlist.h"
 #define RECORD_LEN 1024
 #define PART_LOG_LEN 768
@@ -42,6 +43,7 @@ struct house_keeper {
     float success_rate;
     uint64_t count;
     view_tree_t *views;
+    radix_tree_t *radix_tree;     
     socket_t socket;
     pthread_t tid;
     pthread_t qps_tid;
@@ -59,11 +61,19 @@ int name_compare(const void *value1, const void *value2)
     return strcmp(name1, name2);
 }
 
-int signal_cb(int sig)
+void delete_radix_node( void *data) 
+{
+    if (data)
+    {
+       printf("view id is %d\n", *(int *)data);
+       free(data);
+    }
+}
+void signal_cb(int sig)
 {
     if (sig ==  SIGINT || sig == SIGTERM)
     {
-        house_keeper_destroy(keeper);
+        //house_keeper_destroy(keeper);
     }
 }
 
@@ -109,11 +119,19 @@ void log_handle(house_keeper_t *keeper, const char *view, const char *domain,
 
     view_stats_insert_name(vs, domain);
     view_stats_insert_ip(vs, ip);
-    view_stats_rtype_increment(vs, rtype_index(rtype));
-    view_stats_rcode_increment(vs, rcode_index(rcode));
+    //view_stats_rtype_increment(vs, rtype_index(rtype));
+    //view_stats_rcode_increment(vs, rcode_index(rcode));
+    view_stats_bindwidth_increment(vs, atoi(rcode));
+    printf("bindwith %llu\n", vs->bindwidth);
 	pthread_mutex_unlock(&keeper->mlock);
 }
-
+char *get_view_id_base_on_ip(radix_tree_t *radix_tree, char *clientip)
+{
+    void *id_node = radix_tree_find_str(radix_tree, clientip); 
+    if (id_node == NULL)
+       return "0";
+    return (char *)id_node;
+}
 void handle_string_log(house_keeper_t *keeper , char *line)
 {
     char *str1, *str2, *saveptr2, saveptr1;
@@ -133,19 +151,14 @@ void handle_string_log(house_keeper_t *keeper , char *line)
     /*
      * 02-Jul-2013 11:36:36.273 client 203.119.80.41 57867: view interval: www14998.test.com IN A NXDOMAIN + NS NE NT ND NC
      */
-    //printf("view: %s, domain: %s, rtype: %s, rcode: %s\n", ptr[VIEW_P], ptr[DOMAIN_P], ptr[RTYPE_P], ptr[RCODE_P]);
-    if (ptr[VIEW_P] && ptr[CIP_P] && ptr[RCODE_P] && ptr[RTYPE_P])
+    printf("view: %s, domain: %s, rtype: %s, rcode: %s\n", ptr[VIEW_P], ptr[DOMAIN_P], ptr[RTYPE_P], ptr[RCODE_P]);
+    if (ptr[CIP_P] && ptr[RCODE_P] && strcmp(ptr[RTYPE_P], "\"200\"") == 0)
     {
-       if (ptr[VIEW_P][strlen(ptr[VIEW_P]) -1 ] != ':')
-           return;
-       ptr[VIEW_P][strlen(ptr[VIEW_P]) -1 ] = '\0';
-       ptr[ZONE_P][strlen(ptr[ZONE_P]) -1 ] = '\0';
-	   char keyword[256];
-	   char total_keyword[256];
-	   sprintf(keyword, "%s$%s", ptr[VIEW_P], ptr[ZONE_P]);
-	   sprintf(total_keyword, "*$%s", ptr[ZONE_P]);
-       log_handle(keeper, keyword, ptr[DOMAIN_P], ptr[CIP_P], ptr[RTYPE_P], ptr[RCODE_P]);
-       log_handle(keeper, total_keyword, ptr[DOMAIN_P], ptr[CIP_P], ptr[RTYPE_P], ptr[RCODE_P]);
+       char *view_id = get_view_id_base_on_ip(keeper->radix_tree, ptr[CIP_P]);
+       printf("view id %s of client %s\n", view_id, ptr[CIP_P]);
+
+       log_handle(keeper, view_id, ptr[DOMAIN_P], ptr[CIP_P], ptr[RTYPE_P], ptr[RCODE_P]);
+       log_handle(keeper, "*", ptr[DOMAIN_P], ptr[CIP_P], ptr[RTYPE_P], ptr[RCODE_P]);
     }
 }
 
@@ -156,6 +169,7 @@ void house_keeper_destroy(house_keeper_t *keeper)
     socket_set_addr_reusable(&keeper->socket);
     socket_close(&keeper->socket);
     view_tree_destory(keeper->views);
+    radix_tree_delete(keeper->radix_tree);
 
 	pthread_mutex_destroy(&keeper->mlock);
     free(keeper);
@@ -175,6 +189,46 @@ void add_init_view(house_keeper_t *keeper, const char *name)
     ASSERT(ret == 0, "insert view %s node failed\n", name);
 }
 
+int read_iplib_from_file(radix_tree_t *radix_tree, const char *filename)
+{   
+    FILE *fp = fopen(filename, "r") ;
+    if (fp == NULL)
+    {
+        printf("open file %s failed\n", filename);
+        return 1;
+    }
+    char line[256] = {'\0'};
+    while (fgets(line, 256, fp) != NULL) 
+    {
+        char *p = NULL;
+        char *subnet = NULL;
+        p = strtok(line, " "); 
+        int i = 0;
+        while (p)
+        {
+            if (i == 0) 
+               subnet = p; 
+            else if (i == 1)
+            {
+               break; 
+            }
+            i++;
+            p = strtok(NULL, " ");
+        }
+        if (subnet != NULL && i == 1) 
+        {
+            char *view_id = malloc(sizeof(char ) * 4); 
+            strncat(view_id, p, 4) ;
+            view_id[strlen(view_id) - 1] = '\0';
+            //printf("view_id %s, network %s\n", view_id, subnet);
+            radix_tree_insert_subnet(radix_tree, subnet, view_id);
+        }
+        
+    }
+
+    fclose(fp);
+    return 0;
+}
 
 house_keeper_t *house_keeper_create()
 {
@@ -193,12 +247,22 @@ house_keeper_t *house_keeper_create()
     int ret = socket_bind(&keeper->socket, &addr);
     ASSERT(ret == 0, "socket bind port 8999 failed\n");
 
+    keeper->radix_tree = radix_tree_create(delete_radix_node); 
+    ASSERT(keeper->radix_tree != NULL, "create radix tree failed\n");
+
+    const char *filename = "/usr/local/cloudgtm/var/data/conf_ipquery.new";
+    ret= read_iplib_from_file(keeper->radix_tree, filename);
+    ASSERT( ret == 0, "load ip library from %s failed", filename);
+
     ret = pthread_create(&keeper->tid, NULL, command_handler, keeper);
     ASSERT(ret == 0, "create command handler thread failed\n");
 
     ret = pthread_create(&keeper->qps_tid, NULL, qps_thread, keeper);
     ASSERT(ret == 0, "create command handler thread failed\n");
 	pthread_mutex_init(&keeper->mlock,NULL);
+
+    //signal(SIGINT, signal_cb);
+    //signal(SIGTERM, signal_cb);
 
     return keeper;
 }

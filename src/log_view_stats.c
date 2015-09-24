@@ -78,12 +78,8 @@ view_stats_t *view_stats_create(const char *view_name)
     vs->success_rate = 1.0;
     vs->count = 0;
     vs->last_count = 0;
+    vs->bindwidth = 0;
     strcpy(vs->name, view_name);
-    int i;
-    for( i = 0; i < RCODE_MAX_NUM ; i++)
-        vs->rcode[i] = 0;
-    for( i = 0; i < RTYPE_MAX_NUM; i++)
-        vs->rtype[i] = 0;
 }
 
 uint64_t view_stats_get_size(view_stats_t *vs)
@@ -149,6 +145,12 @@ void view_stats_rtype_increment(view_stats_t *vs, int rtype)
     if (rtype > RTYPE_MAX_NUM || rtype < 0)
         return;
     vs->rtype[rtype]++;
+}
+
+void view_stats_bindwidth_increment(view_stats_t *vs, int content_size)
+{
+    ASSERT(vs , "view stats is NULL when insert\n");
+    vs->bindwidth += content_size;
 }
 
 int min(int a, int b)

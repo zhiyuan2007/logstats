@@ -3,7 +3,7 @@
 #define MAX_HEAP_NODE_NUM 10000
 typedef int (*compare_func)(void *e1, void *e2);
 typedef int (*insert_func)(void *e1, int idx);
-typedef int (*traverse_func)(void *e1);
+typedef int (*traverse_func1)(void *e1);
 
 struct heap{
     void *heap[MAX_HEAP_NODE_NUM];
@@ -19,7 +19,7 @@ void heap_destory(heap_t *hbt);
 void *heap_value(heap_t *hbt, int i);
 bool heap_empty(heap_t *hbt);
 bool heap_reach_roof(heap_t *hbt, int roof);
-void heap_traverse(heap_t *hbt, traverse_func func);
+void heap_traverse(heap_t *hbt, traverse_func1 func);
 bool heap_min_less_than(heap_t *hbt, void *elem);
 int heap_insert(heap_t *hbt, void *x, insert_func func);
 void *heap_delete(heap_t *hbt);
