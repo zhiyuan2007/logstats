@@ -46,6 +46,8 @@ struct house_keeper {
     pthread_t tid;
     pthread_t qps_tid;
 	pthread_mutex_t 	mlock;
+    char config_file[256];
+    int max_pos;
 };
 
 static inline
@@ -125,17 +127,16 @@ void log_handle(house_keeper_t *keeper, const char *view, const char *domain,
         view_stats_insert_name(vs, domain);
         view_stats_insert_ip(vs, ip);
     }
-    view_stats_bindwidth_increment(vs, atoi(rcode));
+    view_stats_bandwidth_increment(vs, atoi(rcode));
     vs->count++;
 	pthread_mutex_unlock(&keeper->mlock);
 }
 char *get_view_id_base_on_ip(radix_tree_t *radix_tree, char *clientip)
 {
     void *id_node = radix_tree_find_str(radix_tree, clientip); 
-    if (id_node == NULL)
-       return "0";
     return (char *)id_node;
 }
+
 void handle_string_log(house_keeper_t *keeper , char *line)
 {
     char *str1, *str2, *saveptr2, saveptr1;
@@ -146,24 +147,30 @@ void handle_string_log(house_keeper_t *keeper , char *line)
     strcpy(query_log, line);
     for (i = 0; i< SP_NUM; i++)
         ptr[i] = NULL;
-    for (i = 0 ,str2 = query_log; i < SP_NUM ; i++, str2 = NULL)
+    for (i = 0 ,str2 = query_log; i < keeper->max_pos ; i++, str2 = NULL)
     {
         ptr[i] = strtok_r(str2, SP, &saveptr2);
         if (ptr[i] == NULL)
             break;
     }
-    /*
-     * 02-Jul-2013 11:36:36.273 client 203.119.80.41 57867: view interval: www14998.test.com IN A NXDOMAIN + NS NE NT ND NC
-     */
+    if (i < keeper->max_pos) 
+        return;
     config_t *conf = keeper->conf;
     printf("clientip: %s, domain: %s, status: %s, content: %s\n", ptr[conf->client_pos], ptr[conf->domain_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
-    if (ptr[conf->client_pos] && ptr[conf->content_pos] && strcmp(ptr[conf->status_pos], "\"200\"") == 0)
+    if (strcmp(ptr[conf->client_pos], "-") != 0 && atoi(ptr[conf->content_pos]) > 0)
     {
        char *view_id = get_view_id_base_on_ip(keeper->radix_tree, ptr[conf->client_pos]);
+       if ( view_id )
+       {
        printf("view id %s of client %s\n", view_id, ptr[conf->client_pos]);
 
        log_handle(keeper, view_id, ptr[conf->domain_pos], ptr[conf->client_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
        log_handle(keeper, "*", ptr[conf->domain_pos], ptr[conf->client_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
+       }
+       else
+       {
+           printf("not find view of ip %s\n", ptr[conf->client_pos]);
+       }
     }
 }
 
@@ -180,6 +187,21 @@ void house_keeper_destroy(house_keeper_t *keeper)
 	pthread_mutex_destroy(&keeper->mlock);
     free(keeper);
 }
+
+void house_keeper_reload(house_keeper_t *keeper)
+{
+    radix_tree_delete(keeper->radix_tree);
+    config_destroy(keeper->conf);
+    config_t *conf = config_create(keeper->config_file);
+    ASSERT(conf != NULL, "create config failed\n");
+    keeper->conf = conf;
+    keeper->radix_tree = radix_tree_create(delete_radix_node); 
+    ASSERT(keeper->radix_tree != NULL, "create radix tree failed\n");
+
+    int ret= read_iplib_from_file(keeper->radix_tree, keeper->conf->iplib_file);
+    ASSERT( ret == 0, "load ip library from %s failed", keeper->conf->iplib_file);
+}
+
 
 void house_keeper_clear_stats(house_keeper_t *keeper)
 {
@@ -247,6 +269,7 @@ house_keeper_t *house_keeper_create(const char *config_file)
     keeper->qps = 0.0;
     keeper->success_rate = 1.0;
     keeper->conf = conf;
+    keeper->max_pos = conf->content_pos + 1;
     keeper->views = view_tree_create(name_compare);
 
     socket_open(&keeper->socket, AF_INET, SOCK_STREAM, 0);
@@ -269,6 +292,7 @@ house_keeper_t *house_keeper_create(const char *config_file)
     ASSERT(ret == 0, "create command handler thread failed\n");
 	pthread_mutex_init(&keeper->mlock,NULL);
 
+    strcpy(keeper->config_file, config_file);
 
     return keeper;
 }
@@ -290,7 +314,7 @@ unsigned int return_all_views_bandwidth(house_keeper_t *keeper,  char **buff)
        if (strlen(tnode->name) == 0 )
            continue;
        pdata[i] = tnode->name;
-       pbandwidth[i] = tnode->vs->bindwidth;
+       pbandwidth[i] = view_stats_bandwidth(tnode->vs);
 
        i++;
     }
@@ -359,6 +383,20 @@ unsigned int flush_stats(house_keeper_t *keeper, char **buff)
     *buff = result_ptr;
     return len;
 }
+
+unsigned int reload(house_keeper_t *keeper, char **buff)
+{
+    house_keeper_reload(keeper);
+    StatsReply reply = STATS_REPLY__INIT;
+    reply.key = "reload";
+    reply.maybe = "success";
+    unsigned int len = stats_reply__get_packed_size(&reply);
+    char *result_ptr = malloc(sizeof(char) *len);
+    stats_reply__pack(&reply, result_ptr);
+    *buff = result_ptr;
+    return len;
+}
+
 
 uint32_t absolute_diff(uint32_t first, uint32_t second)
 {
@@ -440,6 +478,10 @@ void *socket_thread(void *args)
         {
             rtn_msg_len = flush_stats(keeper, &result_ptr);
 		}
+        else if (strcmp(request->key, "reload") == 0)
+        {
+            rtn_msg_len = reload(keeper, &result_ptr);
+		}
         else 
         {
             view_tree_node_t *vtnode = view_tree_find(keeper->views, request->view); 
@@ -469,9 +511,9 @@ void *socket_thread(void *args)
                }else if (strcmp(request->key, "success_rate") == 0)
                {
                    rtn_msg_len = view_stats_get_success_rate(vs, &result_ptr);
-               }else if (strcmp(request->key, "bindwidth") == 0)
+               }else if (strcmp(request->key, "bandwidth") == 0)
                {
-                   rtn_msg_len = view_stats_get_bindwidth(vs, &result_ptr);
+                   rtn_msg_len = view_stats_get_bandwidth(vs, &result_ptr);
                }
             }
         }

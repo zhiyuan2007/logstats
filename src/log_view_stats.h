@@ -15,7 +15,7 @@ struct view_stats {
     uint32_t last_count;
     uint32_t rcode[RCODE_MAX_NUM];
     uint32_t rtype[RTYPE_MAX_NUM];
-    uint64_t bindwidth;
+    uint64_t bandwidth;
 };
 
 typedef enum stats_type {
@@ -53,8 +53,10 @@ unsigned int view_stats_get_qps(view_stats_t *vs, char **buff);
 void view_stats_rtype_increment(view_stats_t *vs, int rtype);
 void view_stats_rcode_increment(view_stats_t *vs, int rcode);
 void view_stats_set_memsize(view_stats_t *vs, uint64_t expect_size);
+void view_stats_bandwidth_increment(view_stats_t *vs, int content_size);
+unsigned int view_stats_bandwidth(view_stats_t *vs);
 
-unsigned int view_stats_get_bindwidth(view_stats_t *vs, char **buff);
+unsigned int view_stats_get_bandwidth(view_stats_t *vs, char **buff);
 
 int rcode_index(const char *rcode);
 int rtype_index(const char *rtype);

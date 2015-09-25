@@ -78,7 +78,7 @@ view_stats_t *view_stats_create(const char *view_name)
     vs->success_rate = 1.0;
     vs->count = 0;
     vs->last_count = 0;
-    vs->bindwidth = 0;
+    vs->bandwidth = 0;
     strcpy(vs->name, view_name);
 }
 
@@ -147,10 +147,10 @@ void view_stats_rtype_increment(view_stats_t *vs, int rtype)
     vs->rtype[rtype]++;
 }
 
-void view_stats_bindwidth_increment(view_stats_t *vs, int content_size)
+void view_stats_bandwidth_increment(view_stats_t *vs, int content_size)
 {
     ASSERT(vs , "view stats is NULL when insert\n");
-    vs->bindwidth += content_size;
+    vs->bandwidth += content_size;
 }
 
 int min(int a, int b)
@@ -308,8 +308,12 @@ unsigned int view_stats_get_success_rate(view_stats_t *vs, char **buff)
     return _view_stats_result2(vs->success_rate, "success_rate", buff);
 }
 
-unsigned int view_stats_get_bindwidth(view_stats_t *vs, char **buff)
+unsigned int view_stats_bandwidth(view_stats_t *vs )
 {
-    float bindwidth = vs->bindwidth *1.0 / 1024 ;
-    return _view_stats_result2(bindwidth, "bindwidth", buff);
+    //unit is k
+    return vs->bandwidth * 1.0 /1024;
+}
+unsigned int view_stats_get_bandwidth(view_stats_t *vs, char **buff)
+{
+    return _view_stats_result2(view_stats_bandwidth(vs), "bandwidth", buff);
 }

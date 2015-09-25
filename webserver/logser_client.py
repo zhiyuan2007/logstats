@@ -124,7 +124,7 @@ class Log_analy():
          return self._get_float(view, "success_rate")
 
      def get_bandwidth(self, view):
-         return self._get_float(view, "bindwidth")
+         return self._get_float(view, "bandwidth")
 
      def _get_float(self, view, key):
          req = StatsRequest()
@@ -180,6 +180,13 @@ class Log_analy():
      def flush_data(self):
          req = StatsRequest()
          req.key = "flush"
+         req.view = 'all'
+         reply = self._send_request(req)
+         return [r for r in reply.name]
+
+     def reload_conf(self):
+         req = StatsRequest()
+         req.key = "reload"
          req.view = 'all'
          reply = self._send_request(req)
          return [r for r in reply.name]

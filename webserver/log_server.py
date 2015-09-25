@@ -219,7 +219,7 @@ class OperationHandler(tornado.web.RequestHandler):
         elif operation == "views":
             self.write(json.dumps(logserver_client.get_views()))
         elif operation == "reload":
-            'ok'
+            self.write(json.dumps(logserver_client.reload_conf()))
 
 
 class ViewHandler(tornado.web.RequestHandler):
