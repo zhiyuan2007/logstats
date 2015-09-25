@@ -115,6 +115,9 @@ class Log_analy():
      def get_success_rate(self, view):
          return self._get_float(view, "success_rate")
 
+     def get_bandwidth(self, view):
+         return self._get_float(view, "bindwidth")
+
      def _get_float(self, view, key):
          req = StatsRequest()
          req.key = key 
@@ -124,8 +127,10 @@ class Log_analy():
          if reply.maybe == "view not find":
              if key == "qps":
                  return {key: 0.0}
-             else:
+             elif key == "success_rate":
                  return {key: 1.0}
+             else:
+                 return {key : "not found view"}
          try:
              if (key == 'success_rate' and (float(reply.maybe) < 0.1)):
                  return {key: 1.0}

@@ -14,7 +14,7 @@
 #include <assert.h>
 #include <pthread.h>
 #include "log_utils.h"
-#include "log_topn.h"
+#include "log_config.h"
 #include "log_name_tree.h"
 #include "log_view_tree.h"
 #include "zip_addr.h"
@@ -22,33 +22,30 @@
 #include "statsmessage.pb-c.h"
 #include "dig_radix_tree.h"
 #include "adlist.h"
+#include "log_topn.h"
 #define RECORD_LEN 1024
 #define PART_LOG_LEN 768
 #define SP_NUM 20
-#define REDIS_MAX_CLIENT 100
 
 #define BUFF_SIZE 1024
 
-
-
 void *command_handler(void *args);
 void *qps_thread(void *args);
+
 void house_keeper_destroy(house_keeper_t *keeper);
 void add_init_view(house_keeper_t *keeper, const char *name);
-
-static house_keeper_t *keeper;
-
+house_keeper_t *keeper;
 struct house_keeper {
     float qps;
     float success_rate;
     uint64_t count;
     view_tree_t *views;
     radix_tree_t *radix_tree;     
+    config_t *conf;
     socket_t socket;
     pthread_t tid;
     pthread_t qps_tid;
 	pthread_mutex_t 	mlock;
-	uint64_t mem_uplimit;
 };
 
 static inline
@@ -61,19 +58,18 @@ int name_compare(const void *value1, const void *value2)
     return strcmp(name1, name2);
 }
 
+
+void get_monitor_logfile(house_keeper_t *keeper, char *filename)
+{
+    strcpy(filename, keeper->conf->monitor_log_file);
+}
+
 void delete_radix_node( void *data) 
 {
     if (data)
     {
-       printf("view id is %d\n", *(int *)data);
+       //printf("view is %s\n",  (char *)data);
        free(data);
-    }
-}
-void signal_cb(int sig)
-{
-    if (sig ==  SIGINT || sig == SIGTERM)
-    {
-        //house_keeper_destroy(keeper);
     }
 }
 
@@ -107,22 +103,29 @@ void log_handle(house_keeper_t *keeper, const char *view, const char *domain,
         }
         view_tree_insert(keeper->views, view, vs);
 		printf("view %s create stats vs %p\n", view, vs);
-    }else {
+    }
+    else 
+    {
 		vs = vtnode->vs;
 		lru_list_move_to_first(keeper->views->lrulist, vtnode->ptr); 
 	}
-	uint64_t current_mem_size = view_tree_get_size(keeper->views);
-	if (keeper->mem_uplimit < current_mem_size) {
-		printf("start to recycle memory current size %lld, uplimit size %lld\n", current_mem_size, keeper->mem_uplimit);
-	    view_tree_set_memsize(keeper->views, keeper->mem_uplimit);
-	}
+    if (keeper->conf->memory_recycle)
+    {
+	    uint64_t current_mem_size = view_tree_get_size(keeper->views);
+        uint64_t max_memory = keeper->conf->max_memory;
+	    if (max_memory < current_mem_size) 
+        {
+	    	printf("start to recycle memory current size %lld, uplimit size %lld\n", current_mem_size, max_memory);
+	        view_tree_set_memsize(keeper->views, max_memory);
+	    }
+    }
 
-    view_stats_insert_name(vs, domain);
-    view_stats_insert_ip(vs, ip);
-    //view_stats_rtype_increment(vs, rtype_index(rtype));
-    //view_stats_rcode_increment(vs, rcode_index(rcode));
+    if (keeper->conf->topn_stats) 
+    {
+        view_stats_insert_name(vs, domain);
+        view_stats_insert_ip(vs, ip);
+    }
     view_stats_bindwidth_increment(vs, atoi(rcode));
-    printf("bindwith %llu\n", vs->bindwidth);
 	pthread_mutex_unlock(&keeper->mlock);
 }
 char *get_view_id_base_on_ip(radix_tree_t *radix_tree, char *clientip)
@@ -151,25 +154,27 @@ void handle_string_log(house_keeper_t *keeper , char *line)
     /*
      * 02-Jul-2013 11:36:36.273 client 203.119.80.41 57867: view interval: www14998.test.com IN A NXDOMAIN + NS NE NT ND NC
      */
-    printf("view: %s, domain: %s, rtype: %s, rcode: %s\n", ptr[VIEW_P], ptr[DOMAIN_P], ptr[RTYPE_P], ptr[RCODE_P]);
-    if (ptr[CIP_P] && ptr[RCODE_P] && strcmp(ptr[RTYPE_P], "\"200\"") == 0)
+    config_t *conf = keeper->conf;
+    printf("clientip: %s, domain: %s, status: %s, content: %s\n", ptr[conf->client_pos], ptr[conf->domain_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
+    if (ptr[conf->client_pos] && ptr[conf->content_pos] && strcmp(ptr[conf->status_pos], "\"200\"") == 0)
     {
-       char *view_id = get_view_id_base_on_ip(keeper->radix_tree, ptr[CIP_P]);
-       printf("view id %s of client %s\n", view_id, ptr[CIP_P]);
+       char *view_id = get_view_id_base_on_ip(keeper->radix_tree, ptr[conf->client_pos]);
+       printf("view id %s of client %s\n", view_id, ptr[conf->client_pos]);
 
-       log_handle(keeper, view_id, ptr[DOMAIN_P], ptr[CIP_P], ptr[RTYPE_P], ptr[RCODE_P]);
-       log_handle(keeper, "*", ptr[DOMAIN_P], ptr[CIP_P], ptr[RTYPE_P], ptr[RCODE_P]);
+       log_handle(keeper, view_id, ptr[conf->domain_pos], ptr[conf->client_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
+       log_handle(keeper, "*", ptr[conf->domain_pos], ptr[conf->client_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
     }
 }
 
 void house_keeper_destroy(house_keeper_t *keeper)
 {
-    pthread_cancel(keeper->tid);
-    pthread_cancel(keeper->qps_tid);
+    int ret = pthread_cancel(keeper->tid);
+    ret = pthread_cancel(keeper->qps_tid);
     socket_set_addr_reusable(&keeper->socket);
     socket_close(&keeper->socket);
     view_tree_destory(keeper->views);
     radix_tree_delete(keeper->radix_tree);
+    config_destroy(keeper->conf);
 
 	pthread_mutex_destroy(&keeper->mlock);
     free(keeper);
@@ -230,29 +235,31 @@ int read_iplib_from_file(radix_tree_t *radix_tree, const char *filename)
     return 0;
 }
 
-house_keeper_t *house_keeper_create()
+house_keeper_t *house_keeper_create(const char *config_file)
 {
+    config_t *conf = config_create(config_file);
+    ASSERT(conf != NULL, "create config failed\n");
+
     house_keeper_t *keeper = malloc(sizeof(house_keeper_t));
     ASSERT(keeper, "create house keeper failed\n");
     keeper->count = 0;
     keeper->qps = 0.0;
     keeper->success_rate = 1.0;
-	keeper->mem_uplimit = 10 * 1024 * 1024;
+    keeper->conf = conf;
     keeper->views = view_tree_create(name_compare);
 
     socket_open(&keeper->socket, AF_INET, SOCK_STREAM, 0);
     addr_t addr;
-    addr_init(&addr, "127.0.0.1", 8999);
+    addr_init(&addr, conf->server_ip, conf->port);
     socket_set_addr_reusable(&keeper->socket);
     int ret = socket_bind(&keeper->socket, &addr);
-    ASSERT(ret == 0, "socket bind port 8999 failed\n");
+    ASSERT(ret == 0, "socket bind port failed\n");
 
     keeper->radix_tree = radix_tree_create(delete_radix_node); 
     ASSERT(keeper->radix_tree != NULL, "create radix tree failed\n");
 
-    const char *filename = "/usr/local/cloudgtm/var/data/conf_ipquery.new";
-    ret= read_iplib_from_file(keeper->radix_tree, filename);
-    ASSERT( ret == 0, "load ip library from %s failed", filename);
+    ret= read_iplib_from_file(keeper->radix_tree, keeper->conf->iplib_file);
+    ASSERT( ret == 0, "load ip library from %s failed", keeper->conf->iplib_file);
 
     ret = pthread_create(&keeper->tid, NULL, command_handler, keeper);
     ASSERT(ret == 0, "create command handler thread failed\n");
@@ -261,8 +268,6 @@ house_keeper_t *house_keeper_create()
     ASSERT(ret == 0, "create command handler thread failed\n");
 	pthread_mutex_init(&keeper->mlock,NULL);
 
-    //signal(SIGINT, signal_cb);
-    //signal(SIGTERM, signal_cb);
 
     return keeper;
 }
@@ -411,7 +416,6 @@ void *socket_thread(void *args)
 		   ASSERT(vs, "view %s in view tree, but has not corresponding view stats", request->view);
            if (strcmp(request->key, "domaintopn") == 0)
            {
-			   printf("5555555555555 vs %p\n", vs);
                rtn_msg_len = view_stats_name_topn(vs, topn, &result_ptr);
            }else if (strcmp(request->key, "iptopn") == 0)
            {
@@ -428,6 +432,9 @@ void *socket_thread(void *args)
            }else if (strcmp(request->key, "success_rate") == 0)
            {
                rtn_msg_len = view_stats_get_success_rate(vs, &result_ptr);
+           }else if (strcmp(request->key, "bindwidth") == 0)
+           {
+               rtn_msg_len = view_stats_get_bindwidth(vs, &result_ptr);
            }
            else if (strcmp(request->key, "flush") == 0)
            {

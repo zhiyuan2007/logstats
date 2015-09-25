@@ -307,3 +307,9 @@ unsigned int view_stats_get_success_rate(view_stats_t *vs, char **buff)
 {
     return _view_stats_result2(vs->success_rate, "success_rate", buff);
 }
+
+unsigned int view_stats_get_bindwidth(view_stats_t *vs, char **buff)
+{
+    float bindwidth = vs->bindwidth *1.0 / 1024 ;
+    return _view_stats_result2(bindwidth, "bindwidth", buff);
+}

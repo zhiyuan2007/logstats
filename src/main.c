@@ -14,15 +14,29 @@
 #include <time.h>
 #include <stdbool.h>
 #include "log_topn.h"
+#include <signal.h>
+
+extern house_keeper_t *keeper;
+
+int goon_stats = 1;
+
+void signal_cb(int sig)
+{
+    if (sig ==  SIGINT || sig == SIGTERM)
+    {
+        house_keeper_destroy(keeper);
+        goon_stats = 0;
+    }
+}
 
 int main(int argc, char **argv)
 {
     if (argc != 2)
     {
-        printf("usage %s query_log_file\n", argv[0]);
+        printf("usage %s config_file\n", argv[0]);
         return 1;
     }
-    house_keeper_t *keeper = house_keeper_create();
+    keeper = house_keeper_create(argv[1]);
     if (keeper)
         printf("create log server manager success\n");
     else
@@ -30,9 +44,11 @@ int main(int argc, char **argv)
         printf("craete log server manager failed\n");
         return 1;
     }
+    signal(SIGINT, signal_cb);
+    signal(SIGTERM, signal_cb);
     char filename[1024];
     bool first = false;
-    strcpy(filename, argv[1]);
+    get_monitor_logfile(keeper, filename);
     char line[1024];
     FILE *file;
 again:    file = fopen(filename, "r");
@@ -63,12 +79,19 @@ goon: while (NULL != fgets(strbuf, 1024, file))
         int new_inode = get_inode(&sbuf);
         if (new_inode == last_inode)
         {
+            if (goon_stats == 0)
+            {
+                fclose(file);
+                exit(0);
+            }
             sleep(1);
             goto goon;
         }
         else
         {
             fclose(file);
+            if (goon_stats == 0)
+                exit(0);
             goto again;
         }
     }

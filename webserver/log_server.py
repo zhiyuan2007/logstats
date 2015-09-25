@@ -189,6 +189,19 @@ class ViewqpsHandler(tornado.web.RequestHandler):
         else:
             self.write(json.dumps(logserver_client.get_view_qps(view)))
 
+class BindwidthHandler(tornado.web.RequestHandler):
+    def set_default_headers(self): 
+        self.set_header('Access-Control-Allow-Origin', '*')
+    def get(self, view):
+        logserver_client = self.application.settings.get('logserver_client')
+        db_hand = self.application.settings.get('db_hand')
+        start_date = self.get_argument("start_date", None)
+        end_date = self.get_argument("end_date", None)
+        if start_date and end_date:
+            self.write(json.dumps(db_hand.get_qps(view, start_date, end_date)))
+        else:
+            self.write(json.dumps(logserver_client.get_bandwidth(view)))
+
 class ViewHandler(tornado.web.RequestHandler):
     def get(self, view, key):
         topn = self.get_argument("topn", RECORD_NUM)
@@ -235,6 +248,7 @@ def main():
             ('/(query_logs|query_speed_logs)', LOGHandler),
             ('/views/(.*)/stats/success_rate', SuccessRateHandler),
             ('/views/(.*)/stats/qps', ViewqpsHandler),
+            ('/views/(.*)/stats/bindwidth', BindwidthHandler),
             ('/views/(.*)/stats/(domaintopn|iptopn)', ViewHandler),
             ('/views/(.*)/stats/(rtype|rcode)', PropertyHandler),
             ], **{'logserver_client': logserver_client, 'db_hand':None })

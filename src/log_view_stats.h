@@ -54,6 +54,8 @@ void view_stats_rtype_increment(view_stats_t *vs, int rtype);
 void view_stats_rcode_increment(view_stats_t *vs, int rcode);
 void view_stats_set_memsize(view_stats_t *vs, uint64_t expect_size);
 
+unsigned int view_stats_get_bindwidth(view_stats_t *vs, char **buff);
+
 int rcode_index(const char *rcode);
 int rtype_index(const char *rtype);
 
