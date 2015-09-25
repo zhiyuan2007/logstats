@@ -126,6 +126,7 @@ void log_handle(house_keeper_t *keeper, const char *view, const char *domain,
         view_stats_insert_ip(vs, ip);
     }
     view_stats_bindwidth_increment(vs, atoi(rcode));
+    vs->count++;
 	pthread_mutex_unlock(&keeper->mlock);
 }
 char *get_view_id_base_on_ip(radix_tree_t *radix_tree, char *clientip)
@@ -271,7 +272,40 @@ house_keeper_t *house_keeper_create(const char *config_file)
 
     return keeper;
 }
+unsigned int return_all_views_bandwidth(house_keeper_t *keeper,  char **buff)
+{
+    int n = keeper->views->count;
+    StatsReply reply = STATS_REPLY__INIT;
+    reply.key = "bandwidth_all";
+    char **pdata = malloc(sizeof (char *) * n);
 
+    int *pbandwidth = malloc(sizeof (int32_t ) * n);
+      
+    rbnode_t *node;
+    int i = 0;
+    RBTREE_FOR(node, rbnode_t *, keeper->views->rbtree)
+    {
+       view_tree_node_t *tnode = (view_tree_node_t *)(node->value);
+       
+       if (strlen(tnode->name) == 0 )
+           continue;
+       pdata[i] = tnode->name;
+       pbandwidth[i] = tnode->vs->bindwidth;
+
+       i++;
+    }
+    reply.n_name = i;
+    reply.name = pdata;
+    reply.n_count = i;
+    reply.count = pbandwidth;
+    unsigned int len = stats_reply__get_packed_size(&reply);
+    char *result_ptr = malloc(sizeof(char) *len);
+    stats_reply__pack(&reply, result_ptr);
+    *buff = result_ptr;
+    free(pdata);
+    free(pbandwidth);
+    return len;
+}
 unsigned int return_all_views(house_keeper_t *keeper,  char **buff)
 {
     int n = keeper->views->count;
@@ -394,52 +428,52 @@ void *socket_thread(void *args)
             topn = 1000;
         int rtn_msg_len = 0;
         pthread_mutex_lock(&keeper->mlock);
-        view_tree_node_t *vtnode = view_tree_find(keeper->views, request->view); 
-        if (vtnode == NULL)
+        if (strcmp(request->key, "views") == 0)
         {
-           if (strcmp(request->key, "views") == 0)
-           {
-               rtn_msg_len = return_all_views(keeper, &result_ptr);
-		   }
-           else if (strcmp(request->key, "flush") == 0)
-           {
-               rtn_msg_len = flush_stats(keeper, &result_ptr);
-		   }
-		   else
-		   {
-               rtn_msg_len = view_not_found(keeper, &result_ptr);
-		   }
+            rtn_msg_len = return_all_views(keeper, &result_ptr);
+		}
+        else if (strcmp(request->key, "bandwidth_all") == 0)
+        {
+            rtn_msg_len = return_all_views_bandwidth(keeper, &result_ptr);
         }
-        else
+        else if (strcmp(request->key, "flush") == 0)
         {
-	       view_stats_t *vs = vtnode->vs;
-		   ASSERT(vs, "view %s in view tree, but has not corresponding view stats", request->view);
-           if (strcmp(request->key, "domaintopn") == 0)
-           {
-               rtn_msg_len = view_stats_name_topn(vs, topn, &result_ptr);
-           }else if (strcmp(request->key, "iptopn") == 0)
-           {
-               rtn_msg_len = view_stats_ip_topn(vs, topn, &result_ptr);
-           }else if (strcmp(request->key, "rcode") == 0)
-           {
-               rtn_msg_len  = view_stats_get_rcode(vs, &result_ptr);
-           }else if (strcmp(request->key, "rtype") == 0)
-           {
-               rtn_msg_len = view_stats_get_rtype(vs, &result_ptr);
-           }else if (strcmp(request->key, "qps") == 0)
-           {
-               rtn_msg_len = view_stats_get_qps(vs, &result_ptr);
-           }else if (strcmp(request->key, "success_rate") == 0)
-           {
-               rtn_msg_len = view_stats_get_success_rate(vs, &result_ptr);
-           }else if (strcmp(request->key, "bindwidth") == 0)
-           {
-               rtn_msg_len = view_stats_get_bindwidth(vs, &result_ptr);
-           }
-           else if (strcmp(request->key, "flush") == 0)
-           {
-               rtn_msg_len = flush_stats(keeper, &result_ptr);
-           }
+            rtn_msg_len = flush_stats(keeper, &result_ptr);
+		}
+        else 
+        {
+            view_tree_node_t *vtnode = view_tree_find(keeper->views, request->view); 
+            if (vtnode == NULL)
+            {
+                   rtn_msg_len = view_not_found(keeper, &result_ptr);
+            }
+            else
+            {
+	           view_stats_t *vs = vtnode->vs;
+		       ASSERT(vs, "view %s in view tree, but has not corresponding view stats", request->view);
+               if (strcmp(request->key, "domaintopn") == 0)
+               {
+                   rtn_msg_len = view_stats_name_topn(vs, topn, &result_ptr);
+               }else if (strcmp(request->key, "iptopn") == 0)
+               {
+                   rtn_msg_len = view_stats_ip_topn(vs, topn, &result_ptr);
+               }else if (strcmp(request->key, "rcode") == 0)
+               {
+                   rtn_msg_len  = view_stats_get_rcode(vs, &result_ptr);
+               }else if (strcmp(request->key, "rtype") == 0)
+               {
+                   rtn_msg_len = view_stats_get_rtype(vs, &result_ptr);
+               }else if (strcmp(request->key, "qps") == 0)
+               {
+                   rtn_msg_len = view_stats_get_qps(vs, &result_ptr);
+               }else if (strcmp(request->key, "success_rate") == 0)
+               {
+                   rtn_msg_len = view_stats_get_success_rate(vs, &result_ptr);
+               }else if (strcmp(request->key, "bindwidth") == 0)
+               {
+                   rtn_msg_len = view_stats_get_bindwidth(vs, &result_ptr);
+               }
+            }
         }
         pthread_mutex_unlock(&keeper->mlock);
         prefix_len = htonl(rtn_msg_len);

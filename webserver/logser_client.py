@@ -109,6 +109,14 @@ class Log_analy():
          r = [[reply.name[i], reply.count[i]] for i in range(0, len(reply.name))]
          return sorted(r, key=lambda(k,v):v, reverse=True)
 
+     def get_bandwidth_all(self):
+         req = StatsRequest()
+         req.key = "bandwidth_all"
+         req.view = "*" 
+         reply = self._send_request(req)
+         r = [[reply.name[i], reply.count[i]] for i in range(0, len(reply.name))]
+         return sorted(r, key=lambda(k,v):v, reverse=True)
+
      def get_view_qps(self, view):
          return self._get_float(view, "qps")
 
@@ -165,14 +173,14 @@ class Log_analy():
      def get_views(self):
          req = StatsRequest()
          req.key = "views"
-         req.view = '*'
+         req.view = 'all'
          reply = self._send_request(req)
          return [r for r in reply.name]
 
      def flush_data(self):
          req = StatsRequest()
          req.key = "flush"
-         req.view = '*'
+         req.view = 'all'
          reply = self._send_request(req)
          return [r for r in reply.name]
 

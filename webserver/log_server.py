@@ -189,7 +189,7 @@ class ViewqpsHandler(tornado.web.RequestHandler):
         else:
             self.write(json.dumps(logserver_client.get_view_qps(view)))
 
-class BindwidthHandler(tornado.web.RequestHandler):
+class BandwidthHandler(tornado.web.RequestHandler):
     def set_default_headers(self): 
         self.set_header('Access-Control-Allow-Origin', '*')
     def get(self, view):
@@ -201,6 +201,26 @@ class BindwidthHandler(tornado.web.RequestHandler):
             self.write(json.dumps(db_hand.get_qps(view, start_date, end_date)))
         else:
             self.write(json.dumps(logserver_client.get_bandwidth(view)))
+
+class BandwidthAllHandler(tornado.web.RequestHandler):
+    def set_default_headers(self): 
+        self.set_header('Access-Control-Allow-Origin', '*')
+    def get(self):
+        logserver_client = self.application.settings.get('logserver_client')
+        self.write(json.dumps(logserver_client.get_bandwidth_all()))
+
+class OperationHandler(tornado.web.RequestHandler):
+    def set_default_headers(self): 
+        self.set_header('Access-Control-Allow-Origin', '*')
+    def get(self, operation):
+        logserver_client = self.application.settings.get('logserver_client')
+        if operation == "flush":
+            self.write(json.dumps(logserver_client.flush_data()))
+        elif operation == "views":
+            self.write(json.dumps(logserver_client.get_views()))
+        elif operation == "reload":
+            'ok'
+
 
 class ViewHandler(tornado.web.RequestHandler):
     def get(self, view, key):
@@ -248,7 +268,9 @@ def main():
             ('/(query_logs|query_speed_logs)', LOGHandler),
             ('/views/(.*)/stats/success_rate', SuccessRateHandler),
             ('/views/(.*)/stats/qps', ViewqpsHandler),
-            ('/views/(.*)/stats/bindwidth', BindwidthHandler),
+            ('/views/(.*)/stats/bandwidth', BandwidthHandler),
+            ('/views/all/stats/bandwidth_all', BandwidthAllHandler),
+            ('/views/all/stats/(views|reload|flush)', OperationHandler),
             ('/views/(.*)/stats/(domaintopn|iptopn)', ViewHandler),
             ('/views/(.*)/stats/(rtype|rcode)', PropertyHandler),
             ], **{'logserver_client': logserver_client, 'db_hand':None })
