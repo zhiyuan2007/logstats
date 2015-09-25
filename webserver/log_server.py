@@ -275,9 +275,7 @@ def main():
             ('/views/(.*)/stats/(rtype|rcode)', PropertyHandler),
             ], **{'logserver_client': logserver_client, 'db_hand':None })
         http_server = tornado.httpserver.HTTPServer(application)
-        http_server.listen(options.port, address="::")
-        if os.popen("ifconfig").read().split("lo")[0].count("inet addr") > 0:
-            http_server.listen(options.port, address="0.0.0.0")
+        http_server.listen(options.port, address="0.0.0.0")
         tornado.ioloop.IOLoop.instance().start()
         print "server start at port: ", options.port
         sys.stdout.flush()
