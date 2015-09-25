@@ -156,13 +156,13 @@ void handle_string_log(house_keeper_t *keeper , char *line)
     if (i < keeper->max_pos) 
         return;
     config_t *conf = keeper->conf;
-    printf("clientip: %s, domain: %s, status: %s, content: %s\n", ptr[conf->client_pos], ptr[conf->domain_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
+    //printf("clientip: %s, domain: %s, status: %s, content: %s\n", ptr[conf->client_pos], ptr[conf->domain_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
     if (strcmp(ptr[conf->client_pos], "-") != 0 && atoi(ptr[conf->content_pos]) > 0)
     {
        char *view_id = get_view_id_base_on_ip(keeper->radix_tree, ptr[conf->client_pos]);
        if ( view_id )
        {
-       printf("view id %s of client %s\n", view_id, ptr[conf->client_pos]);
+       //printf("view id %s of client %s\n", view_id, ptr[conf->client_pos]);
 
        log_handle(keeper, view_id, ptr[conf->domain_pos], ptr[conf->client_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
        log_handle(keeper, "*", ptr[conf->domain_pos], ptr[conf->client_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
