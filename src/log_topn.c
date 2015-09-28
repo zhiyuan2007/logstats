@@ -39,6 +39,8 @@ struct house_keeper {
     float qps;
     float success_rate;
     uint64_t count;
+    uint64_t valid_count;
+    uint64_t skip_count;
     view_tree_t *views;
     radix_tree_t *radix_tree;     
     config_t *conf;
@@ -89,8 +91,14 @@ int get_inode(struct stat *ptr)
 void log_handle(house_keeper_t *keeper, const char *view, const char *domain,
         const char *ip, const char *rtype, const char *rcode)
 {
-
     ASSERT(keeper && view && domain && ip ,"invalid pointer\n");
+    float sample_rate = 1.0 * (keeper->count - keeper->skip_count) / keeper->count;
+    if (sample_rate > keeper->conf->sample_rate)
+    {
+         printf("skip line view %s, domain %s, count %d, skip count %d\n", view, domain, keeper->count, keeper->skip_count);
+         keeper->skip_count++;
+         return;
+    }
 	pthread_mutex_lock(&keeper->mlock);
     view_tree_node_t *vtnode = view_tree_find(keeper->views, view); 
 	view_stats_t *vs = NULL;
@@ -143,9 +151,10 @@ void handle_string_log(house_keeper_t *keeper , char *line)
     char *ptr[100];
     int i;
     int len5;
+    keeper->count++;
     char query_log[RECORD_LEN];
     strcpy(query_log, line);
-    for (i = 0; i< SP_NUM; i++)
+    for (i = 0; i< keeper->max_pos; i++)
         ptr[i] = NULL;
     for (i = 0 ,str2 = query_log; i < keeper->max_pos ; i++, str2 = NULL)
     {
@@ -164,12 +173,13 @@ void handle_string_log(house_keeper_t *keeper , char *line)
        {
        //printf("view id %s of client %s\n", view_id, ptr[conf->client_pos]);
 
+       keeper->valid_count++;
        log_handle(keeper, view_id, ptr[conf->domain_pos], ptr[conf->client_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
        log_handle(keeper, "*", ptr[conf->domain_pos], ptr[conf->client_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
        }
        else
        {
-           printf("not find view of ip %s\n", ptr[conf->client_pos]);
+           printf("not find view of ip %s, log: %s\n", ptr[conf->client_pos], line);
        }
     }
 }
@@ -207,6 +217,8 @@ void house_keeper_clear_stats(house_keeper_t *keeper)
 {
     view_tree_destory(keeper->views);
     keeper->views = view_tree_create(name_compare);
+    keeper->count = 0;
+    keeper->skip_count = 0;
 }
 
 void add_init_view(house_keeper_t *keeper, const char *name)
@@ -245,9 +257,9 @@ int read_iplib_from_file(radix_tree_t *radix_tree, const char *filename)
         }
         if (subnet != NULL && i == 1) 
         {
+            p[strlen(p) - 1] = '\0';
             char *view_id = malloc(sizeof(char ) * 4); 
-            strncat(view_id, p, 4) ;
-            view_id[strlen(view_id) - 1] = '\0';
+            strcpy(view_id, p) ;
             //printf("view_id %s, network %s\n", view_id, subnet);
             radix_tree_insert_subnet(radix_tree, subnet, view_id);
         }
@@ -266,6 +278,7 @@ house_keeper_t *house_keeper_create(const char *config_file)
     house_keeper_t *keeper = malloc(sizeof(house_keeper_t));
     ASSERT(keeper, "create house keeper failed\n");
     keeper->count = 0;
+    keeper->skip_count = 0;
     keeper->qps = 0.0;
     keeper->success_rate = 1.0;
     keeper->conf = conf;

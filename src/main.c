@@ -63,7 +63,7 @@ again:    file = fopen(filename, "r");
         first = true;
     }
     struct stat sbuf;
-    if (lstat(argv[1], &sbuf) == -1)
+    if (lstat(filename, &sbuf) == -1)
     {
         printf("read file stat error\n");
     }
@@ -75,7 +75,7 @@ goon: while (NULL != fgets(strbuf, 1024, file))
     }
     if (feof(file))
     {
-        lstat(argv[1], &sbuf);
+        lstat(filename, &sbuf);
         int new_inode = get_inode(&sbuf);
         if (new_inode == last_inode)
         {
