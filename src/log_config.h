@@ -17,6 +17,7 @@ struct config {
     int topn_stats;
     int topn;
     uint32_t max_memory;
+    int key_pos;
     int client_pos;
     int domain_pos;
     int status_pos;

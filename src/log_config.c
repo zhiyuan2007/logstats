@@ -64,6 +64,8 @@ config_t * config_create(const char *filename)
            conf->topn = atoi(p);
         else if (strcmp("max_memory", tempconf) == 0 )
            conf->max_memory = atoi(p);
+        else if (strcmp("key_pos", tempconf) == 0 )
+           conf->key_pos = atoi(p);
         else if (strcmp("client_pos", tempconf) == 0 )
            conf->client_pos = atoi(p);
         else if (strcmp("domain_pos", tempconf) == 0 )

@@ -174,8 +174,16 @@ void handle_string_log(house_keeper_t *keeper , char *line)
        //printf("view id %s of client %s\n", view_id, ptr[conf->client_pos]);
 
        keeper->valid_count++;
-       log_handle(keeper, view_id, ptr[conf->domain_pos], ptr[conf->client_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
-       log_handle(keeper, "*", ptr[conf->domain_pos], ptr[conf->client_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
+       if (conf->key_pos == conf->client_pos) 
+       {
+           log_handle(keeper, view_id, ptr[conf->domain_pos], ptr[conf->client_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
+           log_handle(keeper, "*", ptr[conf->domain_pos], ptr[conf->client_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
+       }
+       else
+       {
+           log_handle(keeper, ptr[conf->key_pos], view_id, ptr[conf->client_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
+           log_handle(keeper, "*", view_id, ptr[conf->client_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
+       }
        }
        else
        {
@@ -309,6 +317,40 @@ house_keeper_t *house_keeper_create(const char *config_file)
 
     return keeper;
 }
+unsigned int return_all_views_qps(house_keeper_t *keeper,  char **buff)
+{
+    int n = keeper->views->count;
+    StatsReply reply = STATS_REPLY__INIT;
+    reply.key = "qps_all";
+    char **pdata = malloc(sizeof (char *) * n);
+
+    int *pbandwidth = malloc(sizeof (int32_t ) * n);
+      
+    rbnode_t *node;
+    int i = 0;
+    RBTREE_FOR(node, rbnode_t *, keeper->views->rbtree)
+    {
+       view_tree_node_t *tnode = (view_tree_node_t *)(node->value);
+       
+       if (strlen(tnode->name) == 0 )
+           continue;
+       pdata[i] = tnode->name;
+       pbandwidth[i] = tnode->vs->qps * 1000;
+
+       i++;
+    }
+    reply.n_name = i;
+    reply.name = pdata;
+    reply.n_count = i;
+    reply.count = pbandwidth;
+    unsigned int len = stats_reply__get_packed_size(&reply);
+    char *result_ptr = malloc(sizeof(char) *len);
+    stats_reply__pack(&reply, result_ptr);
+    *buff = result_ptr;
+    free(pdata);
+    free(pbandwidth);
+    return len;
+}
 unsigned int return_all_views_bandwidth(house_keeper_t *keeper,  char **buff)
 {
     int n = keeper->views->count;
@@ -441,7 +483,8 @@ void *qps_thread(void *args)
            if (vs->count == 0)
                vs->success_rate  = 1.0;
            else
-               vs->success_rate = absolute_diff(vs->rcode[stats_rcode_servfail], vs->count) * 1.0/ vs->count;
+               vs->success_rate  = 1.0;
+               //vs->success_rate = absolute_diff(vs->rcode[stats_rcode_servfail], vs->count) * 1.0/ vs->count;
         }
 
         pthread_mutex_unlock(&keeper->mlock);
