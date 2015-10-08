@@ -1,0 +1,15 @@
+#!/bin/bash
+cd `pwd`
+pid1=`ps aux|grep log_main|grep -v grep|awk '{print $2}'`
+if [ "xx$pid1" == "xx" ]
+then
+echo "log main not exists, restart..."
+nohup ./log_main stats.conf >> ~/log_main.log 2>&1 &
+fi
+pid2=`ps aux|grep log_server.py|grep -v grep|awk '{print $2}'`
+if [ "xx$pid2" == "xx" ]
+then
+echo "log_server.py not exists, restart..."
+cd ../webserver
+nohup python log_server.py --port=8000 >> ~/log_server.log 2>&1 &
+fi

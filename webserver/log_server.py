@@ -1,6 +1,5 @@
 import datetime
 import os, sys, time, json
-import authority_template
 import db_handler
 import logser_client 
 import threading
@@ -268,14 +267,11 @@ def main():
         logserver_client = logser_client.Log_analy("127.0.0.1", 8999)
         application = tornado.web.Application([
             ('/service', SetHandler),
-            ('/(query_logs|query_speed_logs)', LOGHandler),
-            ('/views/(.*)/stats/success_rate', SuccessRateHandler),
             ('/views/(.*)/stats/qps', ViewqpsHandler),
             ('/views/(.*)/stats/bandwidth', BandwidthHandler),
             ('/views/all/stats/(bandwidth_all|qps_all)', BandwidthAllHandler),
             ('/views/all/stats/(views|reload|flush)', OperationHandler),
             ('/views/(.*)/stats/(domaintopn|iptopn)', ViewHandler),
-            ('/views/(.*)/stats/(rtype|rcode)', PropertyHandler),
             ], **{'logserver_client': logserver_client, 'db_hand':None })
         http_server = tornado.httpserver.HTTPServer(application)
         http_server.listen(options.port, address="0.0.0.0")
