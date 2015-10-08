@@ -20,6 +20,10 @@ config_t * config_create(const char *filename)
     }
     config_t * conf = malloc(sizeof(config_t));
     memset(conf, '\0', sizeof(config_t));
+    //set default value
+    conf->topn_stats = 0; 
+    conf->memory_recycle = 0;
+    conf->sample_rate = 1.0;
     char tempconf[1024];
     while(fgets(tempconf, 1024, fp))
     {

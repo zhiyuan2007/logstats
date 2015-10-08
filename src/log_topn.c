@@ -92,12 +92,16 @@ void log_handle(house_keeper_t *keeper, const char *view, const char *domain,
         const char *ip, const char *rtype, const char *rcode)
 {
     ASSERT(keeper && view && domain && ip ,"invalid pointer\n");
-    float sample_rate = 1.0 * (keeper->count - keeper->skip_count) / keeper->count;
-    if (sample_rate > keeper->conf->sample_rate)
+    //sample 
+    if (keeper->conf->sample_rate > 0.00001 && keeper->conf->sample_rate < 0.99999) 
     {
-         printf("skip line view %s, domain %s, count %d, skip count %d\n", view, domain, keeper->count, keeper->skip_count);
-         keeper->skip_count++;
-         return;
+        float sample_rate = 1.0 * (keeper->count - keeper->skip_count) / keeper->count;
+        if (sample_rate > keeper->conf->sample_rate)
+        {
+             printf("skip line view %s, domain %s, count %d, skip count %d\n", view, domain, keeper->count, keeper->skip_count);
+             keeper->skip_count++;
+             return;
+        }
     }
 	pthread_mutex_lock(&keeper->mlock);
     view_tree_node_t *vtnode = view_tree_find(keeper->views, view); 
@@ -324,7 +328,7 @@ unsigned int return_all_views_qps(house_keeper_t *keeper,  char **buff)
     reply.key = "qps_all";
     char **pdata = malloc(sizeof (char *) * n);
 
-    int *pbandwidth = malloc(sizeof (int32_t ) * n);
+    int *pqps = malloc(sizeof (int32_t ) * n);
       
     rbnode_t *node;
     int i = 0;
@@ -335,20 +339,20 @@ unsigned int return_all_views_qps(house_keeper_t *keeper,  char **buff)
        if (strlen(tnode->name) == 0 )
            continue;
        pdata[i] = tnode->name;
-       pbandwidth[i] = tnode->vs->qps * 1000;
+       pqps[i] = tnode->vs->qps * 1000;
 
        i++;
     }
     reply.n_name = i;
     reply.name = pdata;
     reply.n_count = i;
-    reply.count = pbandwidth;
+    reply.count = pqps;
     unsigned int len = stats_reply__get_packed_size(&reply);
     char *result_ptr = malloc(sizeof(char) *len);
     stats_reply__pack(&reply, result_ptr);
     *buff = result_ptr;
     free(pdata);
-    free(pbandwidth);
+    free(pqps);
     return len;
 }
 unsigned int return_all_views_bandwidth(house_keeper_t *keeper,  char **buff)
@@ -529,6 +533,10 @@ void *socket_thread(void *args)
         else if (strcmp(request->key, "bandwidth_all") == 0)
         {
             rtn_msg_len = return_all_views_bandwidth(keeper, &result_ptr);
+        }
+        else if (strcmp(request->key, "qps_all") == 0)
+        {
+            rtn_msg_len = return_all_views_qps(keeper, &result_ptr);
         }
         else if (strcmp(request->key, "flush") == 0)
         {

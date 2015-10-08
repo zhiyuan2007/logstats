@@ -110,11 +110,21 @@ class Log_analy():
          return sorted(r, key=lambda(k,v):v, reverse=True)
 
      def get_bandwidth_all(self):
+         return self._get_stats_all("bandwidth_all")
+
+     def get_qps_all(self):
+         return self._get_stats_all("qps_all")
+
+     def _get_stats_all(self, key):
          req = StatsRequest()
-         req.key = "bandwidth_all"
+         req.key = key
          req.view = "*" 
          reply = self._send_request(req)
-         r = [[reply.name[i], reply.count[i]] for i in range(0, len(reply.name))]
+         r = []
+         if key == 'qps_all':
+             r = [[reply.name[i], reply.count[i] *1.0/ 1000] for i in range(0, len(reply.name))]
+         else:
+             r = [[reply.name[i], reply.count[i]] for i in range(0, len(reply.name))]
          return sorted(r, key=lambda(k,v):v, reverse=True)
 
      def get_view_qps(self, view):

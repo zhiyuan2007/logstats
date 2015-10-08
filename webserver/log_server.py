@@ -205,9 +205,12 @@ class BandwidthHandler(tornado.web.RequestHandler):
 class BandwidthAllHandler(tornado.web.RequestHandler):
     def set_default_headers(self): 
         self.set_header('Access-Control-Allow-Origin', '*')
-    def get(self):
+    def get(self, key):
         logserver_client = self.application.settings.get('logserver_client')
-        self.write(json.dumps(logserver_client.get_bandwidth_all()))
+        if key == "bandwidth_all":
+            self.write(json.dumps(logserver_client.get_bandwidth_all()))
+        elif key == "qps_all":
+            self.write(json.dumps(logserver_client.get_qps_all()))
 
 class OperationHandler(tornado.web.RequestHandler):
     def set_default_headers(self): 
@@ -269,7 +272,7 @@ def main():
             ('/views/(.*)/stats/success_rate', SuccessRateHandler),
             ('/views/(.*)/stats/qps', ViewqpsHandler),
             ('/views/(.*)/stats/bandwidth', BandwidthHandler),
-            ('/views/all/stats/bandwidth_all', BandwidthAllHandler),
+            ('/views/all/stats/(bandwidth_all|qps_all)', BandwidthAllHandler),
             ('/views/all/stats/(views|reload|flush)', OperationHandler),
             ('/views/(.*)/stats/(domaintopn|iptopn)', ViewHandler),
             ('/views/(.*)/stats/(rtype|rcode)', PropertyHandler),
