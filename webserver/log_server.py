@@ -2,6 +2,7 @@ import datetime
 import os, sys, time, json
 import db_handler
 import logser_client 
+import net_rate_monitor
 import threading
 import socket
 import tornado
@@ -158,9 +159,9 @@ class SetHandler(tornado.web.RequestHandler):
         db_hand = db_handler.DB(path + '/' + db_name)
         self.application.settings['db_hand'] = db_hand
         logserver_client = self.application.settings.get('logserver_client')
-        qps_thread = StatsThread(db_hand, logserver_client)
-        qps_thread.daemon = True
-        qps_thread.start()
+        #qps_thread = StatsThread(db_hand, logserver_client)
+        #qps_thread.daemon = True
+        #qps_thread.start()
     def put(self, *args, **kwargs):
         pass
 
@@ -206,8 +207,10 @@ class BandwidthAllHandler(tornado.web.RequestHandler):
         self.set_header('Access-Control-Allow-Origin', '*')
     def get(self, key):
         logserver_client = self.application.settings.get('logserver_client')
+        net_rate_mon = self.application.settings.get('net_rate_mon')
         if key == "bandwidth_all":
-            self.write(json.dumps(logserver_client.get_bandwidth_all()))
+            response = {"bandwidth":logserver_client.get_bandwidth_all(), "network_bandwidth":net_rate_mon.get_transmit_flow()} 
+            self.write(json.dumps(response))
         elif key == "qps_all":
             self.write(json.dumps(logserver_client.get_qps_all()))
 
@@ -265,6 +268,7 @@ def main():
     try:
         tornado.options.parse_command_line()
         logserver_client = logser_client.Log_analy("127.0.0.1", 8999)
+        net_rate_mon = net_rate_monitor.RateMonitor()
         application = tornado.web.Application([
             ('/service', SetHandler),
             ('/views/(.*)/stats/qps', ViewqpsHandler),
@@ -272,7 +276,7 @@ def main():
             ('/views/all/stats/(bandwidth_all|qps_all)', BandwidthAllHandler),
             ('/views/all/stats/(views|reload|flush)', OperationHandler),
             ('/views/(.*)/stats/(domaintopn|iptopn)', ViewHandler),
-            ], **{'logserver_client': logserver_client, 'db_hand':None })
+            ], **{'logserver_client': logserver_client, 'net_rate_mon':net_rate_mon})
         http_server = tornado.httpserver.HTTPServer(application)
         http_server.listen(options.port, address="0.0.0.0")
         tornado.ioloop.IOLoop.instance().start()

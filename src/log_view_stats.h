@@ -57,6 +57,7 @@ void view_stats_bandwidth_increment(view_stats_t *vs, int content_size);
 unsigned int view_stats_bandwidth(view_stats_t *vs);
 
 unsigned int view_stats_get_bandwidth(view_stats_t *vs, char **buff);
+void view_stats_set_bandwidth(view_stats_t *vs, unsigned int bw);
 
 int rcode_index(const char *rcode);
 int rtype_index(const char *rtype);

@@ -1,0 +1,35 @@
+#!/bin/bash
+function process_mgr() {
+pid2=`ps aux|grep center_server.py |grep -v grep|awk '{print $2}'`
+if [ "xx$pid2" == "xx" ]
+then
+    if [ $1 == "restart" ] || [ $1 == "start" ]
+    then
+    echo "center_server.py not exists, restart..."
+    nohup python center_server.pyc --port=8001 >> /var/log/logstats/center_server.log 2>&1 &
+    fi
+else
+    if [ $1 == "restart" ] 
+    then
+    echo "center_server.py is still exists, kill and restart..."
+    kill -9 $pid2
+    nohup python center_server.pyc --port=8001 >> /var/log/logstats/center_server.log 2>&1 &
+    elif [ $1 == "stop" ]
+    then
+    echo "kill center_server.py..."
+    kill -9 $pid2
+    fi
+fi
+}
+
+if [ $# == 1 ]
+then
+    cd `pwd`
+    export PATH=$PATH:/usr/bin/:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin/:/sbin
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+    process_mgr $1
+else
+    echo "usage: restart_logserver start|stop|restart"
+fi
+
+

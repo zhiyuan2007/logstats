@@ -123,22 +123,7 @@ void log_handle(house_keeper_t *keeper, const char *view, const char *domain,
 		vs = vtnode->vs;
 		lru_list_move_to_first(keeper->views->lrulist, vtnode->ptr); 
 	}
-    if (keeper->conf->memory_recycle)
-    {
-	    uint64_t current_mem_size = view_tree_get_size(keeper->views);
-        uint64_t max_memory = keeper->conf->max_memory;
-	    if (max_memory < current_mem_size) 
-        {
-	    	printf("start to recycle memory current size %lld, uplimit size %lld\n", current_mem_size, max_memory);
-	        view_tree_set_memsize(keeper->views, max_memory);
-	    }
-    }
 
-    if (keeper->conf->topn_stats) 
-    {
-        view_stats_insert_name(vs, domain);
-        view_stats_insert_ip(vs, ip);
-    }
     view_stats_bandwidth_increment(vs, atoi(rcode));
     vs->count++;
 	pthread_mutex_unlock(&keeper->mlock);
@@ -191,7 +176,7 @@ void handle_string_log(house_keeper_t *keeper , char *line)
        }
        else
        {
-           printf("not find view of ip %s, log: %s\n", ptr[conf->client_pos], line);
+           printf("not find view of ip %s\n", ptr[conf->client_pos]);
        }
     }
 }
@@ -374,6 +359,7 @@ unsigned int return_all_views_bandwidth(house_keeper_t *keeper,  char **buff)
            continue;
        pdata[i] = tnode->name;
        pbandwidth[i] = view_stats_bandwidth(tnode->vs);
+       view_stats_set_bandwidth(tnode->vs, 0);
 
        i++;
     }

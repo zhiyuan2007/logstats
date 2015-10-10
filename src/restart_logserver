@@ -1,15 +1,56 @@
 #!/bin/bash
-cd `pwd`
+function process_mgr() {
 pid1=`ps aux|grep log_main|grep -v grep|awk '{print $2}'`
 if [ "xx$pid1" == "xx" ]
 then
-echo "log main not exists, restart..."
-nohup ./log_main stats.conf >> ~/log_main.log 2>&1 &
+    if [ $1 == "restart" ] || [ $1 == "start" ]
+    then
+    echo "log main not exists, restart..."
+    nohup ./log_main stats.conf >> /var/log/logstats/log_main.log 2>&1 &
+    fi
+else
+    if [ $1 == "restart" ] 
+    then
+    echo "log main is still exists, kill and restart..."
+    kill -9 $pid1
+    nohup ./log_main stats.conf >> /var/log/logstats/log_main.log 2>&1 &
+    elif [ $1 == "stop" ]
+    then
+    echo "killed logmain..."
+    kill -9 $pid1
+    fi
 fi
+sleep 1
 pid2=`ps aux|grep log_server.py|grep -v grep|awk '{print $2}'`
 if [ "xx$pid2" == "xx" ]
 then
-echo "log_server.py not exists, restart..."
-cd ../webserver
-nohup python log_server.py --port=8000 >> ~/log_server.log 2>&1 &
+    if [ $1 == "restart" ] || [ $1 == "start" ]
+    then
+    echo "log_server.py not exists, restart..."
+    nohup python log_server.pyc --port=8000 >> /var/log/logstats/log_server.log 2>&1 &
+    fi
+else
+    if [ $1 == "restart" ] 
+    then
+    echo "log_server.py is still exists, kill and restart..."
+    kill -9 $pid2
+    nohup python log_server.pyc --port=8000 >> /var/log/logstats/log_server.log 2>&1 &
+    elif [ $1 == "stop" ]
+    then
+    echo "kill log_server.py..."
+    kill -9 $pid2
+    fi
 fi
+}
+
+if [ $# == 1 ]
+then
+    cd `pwd`
+    export PATH=$PATH:/usr/bin/:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin/:/sbin
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+    process_mgr $1
+else
+    echo "usage: restart_logserver start|stop|restart"
+fi
+
+
