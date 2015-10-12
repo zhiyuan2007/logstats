@@ -316,7 +316,7 @@ void view_stats_set_bandwidth(view_stats_t *vs, unsigned int bw)
 unsigned int view_stats_bandwidth(view_stats_t *vs )
 {
     //unit is k
-    return vs->bandwidth * 1.0 /1024;
+    return vs->bandwidth;
 }
 unsigned int view_stats_get_bandwidth(view_stats_t *vs, char **buff)
 {

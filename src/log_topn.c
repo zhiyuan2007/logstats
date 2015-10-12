@@ -357,11 +357,14 @@ unsigned int return_all_views_bandwidth(house_keeper_t *keeper,  char **buff)
        
        if (strlen(tnode->name) == 0 )
            continue;
-       pdata[i] = tnode->name;
-       pbandwidth[i] = view_stats_bandwidth(tnode->vs);
-       view_stats_set_bandwidth(tnode->vs, 0);
-
-       i++;
+       unsigned int bw = view_stats_bandwidth(tnode->vs);
+       if ( bw != 0) 
+       {
+           pdata[i] = tnode->name;
+           pbandwidth[i] = bw;
+           view_stats_set_bandwidth(tnode->vs, 0);
+           i++;
+       }
     }
     reply.n_name = i;
     reply.name = pdata;
