@@ -13,7 +13,7 @@ from google.protobuf import descriptor_pb2
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='statsmessage.proto',
   package='',
-  serialized_pb='\n\x12statsmessage.proto\"7\n\x0cStatsRequest\x12\x0b\n\x03key\x18\x02 \x02(\t\x12\x0c\n\x04view\x18\x03 \x02(\t\x12\x0c\n\x04topn\x18\x04 \x01(\x05\"&\n\x07MsgCell\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05\x63ount\x18\x02 \x01(\x05\"n\n\nStatsReply\x12\x0b\n\x03key\x18\x02 \x01(\t\x12\r\n\x05maybe\x18\x03 \x01(\t\x12\r\n\x05value\x18\x04 \x01(\x02\x12\x18\n\x06result\x18\x05 \x03(\x0b\x32\x08.MsgCell\x12\x0c\n\x04name\x18\x06 \x03(\t\x12\r\n\x05\x63ount\x18\x07 \x03(\x05')
+  serialized_pb='\n\x12statsmessage.proto\"7\n\x0cStatsRequest\x12\x0b\n\x03key\x18\x02 \x02(\t\x12\x0c\n\x04view\x18\x03 \x02(\t\x12\x0c\n\x04topn\x18\x04 \x01(\x05\"&\n\x07MsgCell\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05\x63ount\x18\x02 \x01(\x05\"\xfb\x01\n\nStatsReply\x12\x0b\n\x03key\x18\x02 \x01(\t\x12\r\n\x05maybe\x18\x03 \x01(\t\x12\r\n\x05value\x18\x04 \x01(\x02\x12\x18\n\x06result\x18\x05 \x03(\x0b\x32\x08.MsgCell\x12\x0c\n\x04name\x18\x06 \x03(\t\x12\r\n\x05\x63ount\x18\x07 \x03(\x05\x12\x0c\n\x04rate\x18\x08 \x03(\x05\x12\x14\n\x0c\x61\x63\x63\x65ss_count\x18\t \x03(\x05\x12\x11\n\tbandwidth\x18\n \x03(\x05\x12\x11\n\thit_count\x18\x0b \x03(\x05\x12\x15\n\rhit_bandwidth\x18\x0c \x03(\x05\x12\x12\n\nlost_count\x18\r \x03(\x05\x12\x16\n\x0elost_bandwidth\x18\x0e \x03(\x05')
 
 
 
@@ -144,6 +144,55 @@ _STATSREPLY = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='rate', full_name='StatsReply.rate', index=6,
+      number=8, type=5, cpp_type=1, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='access_count', full_name='StatsReply.access_count', index=7,
+      number=9, type=5, cpp_type=1, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='bandwidth', full_name='StatsReply.bandwidth', index=8,
+      number=10, type=5, cpp_type=1, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='hit_count', full_name='StatsReply.hit_count', index=9,
+      number=11, type=5, cpp_type=1, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='hit_bandwidth', full_name='StatsReply.hit_bandwidth', index=10,
+      number=12, type=5, cpp_type=1, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='lost_count', full_name='StatsReply.lost_count', index=11,
+      number=13, type=5, cpp_type=1, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='lost_bandwidth', full_name='StatsReply.lost_bandwidth', index=12,
+      number=14, type=5, cpp_type=1, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -153,8 +202,8 @@ _STATSREPLY = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=119,
-  serialized_end=229,
+  serialized_start=120,
+  serialized_end=371,
 )
 
 _STATSREPLY.fields_by_name['result'].message_type = _MSGCELL

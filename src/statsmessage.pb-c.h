@@ -63,10 +63,24 @@ struct  _StatsReply
   char **name;
   size_t n_count;
   int32_t *count;
+  size_t n_rate;
+  int32_t *rate;
+  size_t n_access_count;
+  int32_t *access_count;
+  size_t n_bandwidth;
+  int32_t *bandwidth;
+  size_t n_hit_count;
+  int32_t *hit_count;
+  size_t n_hit_bandwidth;
+  int32_t *hit_bandwidth;
+  size_t n_lost_count;
+  int32_t *lost_count;
+  size_t n_lost_bandwidth;
+  int32_t *lost_bandwidth;
 };
 #define STATS_REPLY__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&stats_reply__descriptor) \
-    , NULL, NULL, 0,0, 0,NULL, 0,NULL, 0,NULL }
+    , NULL, NULL, 0,0, 0,NULL, 0,NULL, 0,NULL, 0,NULL, 0,NULL, 0,NULL, 0,NULL, 0,NULL, 0,NULL, 0,NULL }
 
 
 /* StatsRequest methods */

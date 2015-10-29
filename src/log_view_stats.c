@@ -23,34 +23,7 @@ char *RTYPE[RTYPE_MAX_NUM] = {
     "NS",
     "SOA",
     "TXT",
-	"SPF"
-    "SRV",
-    "DNAME",
-    "NAPTR",
-    "OTHER",
 };
-
-int rtype_index(const char *rtype)
-{
-    int i = 0 ;
-    for( ; i < RTYPE_MAX_NUM; i++)
-    {
-        if (strcmp(rtype, RTYPE[i])== 0)
-            return i;
-    }
-    return RTYPE_MAX_NUM-1;
-}
-
-int rcode_index(const char *rcode)
-{
-    int i = 0 ;
-    for( ; i < RCODE_MAX_NUM; i++)
-    {
-        if (strcmp(rcode, RCODE[i])== 0)
-            return i;
-    }
-    return RCODE_MAX_NUM -1;
-}
 
 view_stats_t *view_stats_create(const char *view_name)
 {
@@ -76,9 +49,7 @@ view_stats_t *view_stats_create(const char *view_name)
 
     vs->qps = 0.0;
     vs->success_rate = 1.0;
-    vs->count = 0;
-    vs->last_count = 0;
-    vs->bandwidth = 0;
+    view_stats_init(vs);
     strcpy(vs->name, view_name);
 }
 
@@ -131,26 +102,24 @@ void view_stats_insert_ip(view_stats_t *vs, const char *ip)
     ASSERT(vs && ip, "view stats or name is NULL when insert\n");
     name_tree_insert(vs->ip_tree, ip);
 }
-void view_stats_rcode_increment(view_stats_t *vs, int rcode)
-{
-    ASSERT(vs, "view stats is NULL when insert\n");
-    if (rcode > RCODE_MAX_NUM || rcode < 0)
-        return;
-    vs->rcode[rcode]++;
-}
 
-void view_stats_rtype_increment(view_stats_t *vs, int rtype)
+void view_stats_hit_bandwidth_increment(view_stats_t *vs, int content_size)
 {
     ASSERT(vs , "view stats is NULL when insert\n");
-    if (rtype > RTYPE_MAX_NUM || rtype < 0)
-        return;
-    vs->rtype[rtype]++;
+    vs->hit_bandwidth += content_size;
+    vs->hit_count++;
 }
-
+void view_stats_lost_bandwidth_increment(view_stats_t *vs, int content_size)
+{
+    ASSERT(vs , "view stats is NULL when insert\n");
+    vs->lost_bandwidth += content_size;
+    vs->lost_count++;
+}
 void view_stats_bandwidth_increment(view_stats_t *vs, int content_size)
 {
     ASSERT(vs , "view stats is NULL when insert\n");
     vs->bandwidth += content_size;
+    vs->count++;
 }
 
 int min(int a, int b)
@@ -272,16 +241,6 @@ unsigned int _view_stats_result1(int *array, char *key, char **buff)
 
 }
 
-unsigned int view_stats_get_rcode(view_stats_t *vs, char **buff)
-{
-    return _view_stats_result1(vs->rcode, "rcode", buff);
-}
-
-unsigned int view_stats_get_rtype(view_stats_t *vs, char **buff)
-{
-    return _view_stats_result1(vs->rtype, "rtype", buff);
-}
-
 unsigned int _view_stats_result2(float value, char *key, char **buff)
 {
     StatsReply reply = STATS_REPLY__INIT;
@@ -306,6 +265,19 @@ unsigned int view_stats_get_qps(view_stats_t *vs, char **buff)
 unsigned int view_stats_get_success_rate(view_stats_t *vs, char **buff)
 {
     return _view_stats_result2(vs->success_rate, "success_rate", buff);
+}
+
+void view_stats_init(view_stats_t *vs)
+{
+    vs->rate = 0;
+    vs->count = 0;
+    vs->last_count = 0;
+    vs->bandwidth = 0;
+    vs->last_bandwidth = 0;
+    vs->hit_count = 0;
+    vs->hit_bandwidth = 0;
+    vs->lost_count = 0;
+    vs->lost_bandwidth = 0;
 }
 
 void view_stats_set_bandwidth(view_stats_t *vs, unsigned int bw)

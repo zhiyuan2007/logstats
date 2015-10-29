@@ -180,6 +180,24 @@ class Log_analy():
          reply = self._send_request(req)
          return [r for r in reply.name]
      
+     def get_all_stats(self):
+         req = StatsRequest()
+         req.key = "stats_all"
+         req.view = 'all'
+         reply = self._send_request(req)
+         all_stats = {}
+         for i in range(len(reply.name)):
+             name = reply.name[i]
+             all_stats[name] = {}
+             all_stats[name]['rate'] = reply.rate[i] 
+             all_stats[name]['bandwidth'] = reply.bandwidth[i] 
+             all_stats[name]['access_count'] = reply.access_count[i] 
+             all_stats[name]['hit_count'] = reply.hit_count[i] 
+             all_stats[name]['hit_bandwidth'] = reply.hit_bandwidth[i] 
+             all_stats[name]['lost_count'] = reply.lost_count[i] 
+             all_stats[name]['lost_bandwidth'] = reply.lost_bandwidth[i] 
+         return all_stats
+
      def get_views(self):
          req = StatsRequest()
          req.key = "views"

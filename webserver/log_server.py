@@ -211,6 +211,8 @@ class BandwidthAllHandler(tornado.web.RequestHandler):
         if key == "bandwidth_all":
             response = {"bandwidth":logserver_client.get_bandwidth_all(), "network_bandwidth":net_rate_mon.get_transmit_flow()} 
             self.write(json.dumps(response))
+        elif key == "stats_all":
+            self.write(json.dumps(logserver_client.get_all_stats()))
         elif key == "qps_all":
             self.write(json.dumps(logserver_client.get_qps_all()))
 
@@ -273,7 +275,7 @@ def main():
             ('/service', SetHandler),
             ('/views/(.*)/stats/qps', ViewqpsHandler),
             ('/views/(.*)/stats/bandwidth', BandwidthHandler),
-            ('/views/all/stats/(bandwidth_all|qps_all)', BandwidthAllHandler),
+            ('/views/all/stats/(stats_all|bandwidth_all|qps_all)', BandwidthAllHandler),
             ('/views/all/stats/(views|reload|flush)', OperationHandler),
             ('/views/(.*)/stats/(domaintopn|iptopn)', ViewHandler),
             ], **{'logserver_client': logserver_client, 'net_rate_mon':net_rate_mon})

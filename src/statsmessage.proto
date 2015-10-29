@@ -16,4 +16,11 @@ message StatsReply{
      repeated MsgCell result=5;
      repeated string name=6;
      repeated int32 count=7;
+     repeated int32 rate=8; 
+     repeated int32 access_count=9;
+     repeated int32 bandwidth=10;
+     repeated int32 hit_count=11;
+     repeated int32 hit_bandwidth=12;
+     repeated int32 lost_count=13;
+     repeated int32 lost_bandwidth=14;
 }

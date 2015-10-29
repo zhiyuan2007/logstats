@@ -251,7 +251,7 @@ const ProtobufCMessageDescriptor msg_cell__descriptor =
   (ProtobufCMessageInit) msg_cell__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor stats_reply__field_descriptors[6] =
+static const ProtobufCFieldDescriptor stats_reply__field_descriptors[13] =
 {
   {
     "key",
@@ -325,19 +325,110 @@ static const ProtobufCFieldDescriptor stats_reply__field_descriptors[6] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "rate",
+    8,
+    PROTOBUF_C_LABEL_REPEATED,
+    PROTOBUF_C_TYPE_INT32,
+    offsetof(StatsReply, n_rate),
+    offsetof(StatsReply, rate),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "access_count",
+    9,
+    PROTOBUF_C_LABEL_REPEATED,
+    PROTOBUF_C_TYPE_INT32,
+    offsetof(StatsReply, n_access_count),
+    offsetof(StatsReply, access_count),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "bandwidth",
+    10,
+    PROTOBUF_C_LABEL_REPEATED,
+    PROTOBUF_C_TYPE_INT32,
+    offsetof(StatsReply, n_bandwidth),
+    offsetof(StatsReply, bandwidth),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "hit_count",
+    11,
+    PROTOBUF_C_LABEL_REPEATED,
+    PROTOBUF_C_TYPE_INT32,
+    offsetof(StatsReply, n_hit_count),
+    offsetof(StatsReply, hit_count),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "hit_bandwidth",
+    12,
+    PROTOBUF_C_LABEL_REPEATED,
+    PROTOBUF_C_TYPE_INT32,
+    offsetof(StatsReply, n_hit_bandwidth),
+    offsetof(StatsReply, hit_bandwidth),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "lost_count",
+    13,
+    PROTOBUF_C_LABEL_REPEATED,
+    PROTOBUF_C_TYPE_INT32,
+    offsetof(StatsReply, n_lost_count),
+    offsetof(StatsReply, lost_count),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "lost_bandwidth",
+    14,
+    PROTOBUF_C_LABEL_REPEATED,
+    PROTOBUF_C_TYPE_INT32,
+    offsetof(StatsReply, n_lost_bandwidth),
+    offsetof(StatsReply, lost_bandwidth),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned stats_reply__field_indices_by_name[] = {
+  7,   /* field[7] = access_count */
+  8,   /* field[8] = bandwidth */
   5,   /* field[5] = count */
+  10,   /* field[10] = hit_bandwidth */
+  9,   /* field[9] = hit_count */
   0,   /* field[0] = key */
+  12,   /* field[12] = lost_bandwidth */
+  11,   /* field[11] = lost_count */
   1,   /* field[1] = maybe */
   4,   /* field[4] = name */
+  6,   /* field[6] = rate */
   3,   /* field[3] = result */
   2,   /* field[2] = value */
 };
 static const ProtobufCIntRange stats_reply__number_ranges[1 + 1] =
 {
   { 2, 0 },
-  { 0, 6 }
+  { 0, 13 }
 };
 const ProtobufCMessageDescriptor stats_reply__descriptor =
 {
@@ -347,7 +438,7 @@ const ProtobufCMessageDescriptor stats_reply__descriptor =
   "StatsReply",
   "",
   sizeof(StatsReply),
-  6,
+  13,
   stats_reply__field_descriptors,
   stats_reply__field_indices_by_name,
   1,  stats_reply__number_ranges,

@@ -25,7 +25,7 @@
 #include "log_topn.h"
 #define RECORD_LEN 1024
 #define PART_LOG_LEN 768
-#define SP_NUM 20
+#define SP_NUM 50
 
 #define BUFF_SIZE 1024
 
@@ -88,35 +88,45 @@ int get_inode(struct stat *ptr)
     return (int)ptr->st_ino;
 }
 
-void log_handle(house_keeper_t *keeper, const char *view, const char *domain,
-        const char *ip, const char *rtype, const char *rcode)
+int get_hit_status(const char *status) 
 {
-    ASSERT(keeper && view && domain && ip ,"invalid pointer\n");
+    if (0 == strcmp(status, " HIT") )
+    {
+       return 0;
+    }
+    else if (0 == strcmp(status, "MISS") )
+    {
+       return 1;
+    }
+    return -1;
+}
+void log_handle(house_keeper_t *keeper, const char *key, const char *ip, const char *view_id, const char *status, uint32_t size, int hit_status)
+{
+    ASSERT(keeper && key && ip ,"invalid pointer\n");
     //sample 
     if (keeper->conf->sample_rate > 0.00001 && keeper->conf->sample_rate < 0.99999) 
     {
         float sample_rate = 1.0 * (keeper->count - keeper->skip_count) / keeper->count;
         if (sample_rate > keeper->conf->sample_rate)
         {
-             printf("skip line view %s, domain %s, count %d, skip count %d\n", view, domain, keeper->count, keeper->skip_count);
              keeper->skip_count++;
              return;
         }
     }
 	pthread_mutex_lock(&keeper->mlock);
-    view_tree_node_t *vtnode = view_tree_find(keeper->views, view); 
+    view_tree_node_t *vtnode = view_tree_find(keeper->views, key); 
 	view_stats_t *vs = NULL;
     if (NULL == vtnode)
     {
-        vs = view_stats_create(view);
+        vs = view_stats_create(key);
         if (NULL == vs)
         {
             printf("not  enough memory\n");
 	        pthread_mutex_unlock(&keeper->mlock);
             return;
         }
-        view_tree_insert(keeper->views, view, vs);
-		printf("view %s create stats vs %p\n", view, vs);
+        view_tree_insert(keeper->views, key, vs);
+		printf("key %s create stats vs %p\n", key, vs);
     }
     else 
     {
@@ -124,8 +134,14 @@ void log_handle(house_keeper_t *keeper, const char *view, const char *domain,
 		lru_list_move_to_first(keeper->views->lrulist, vtnode->ptr); 
 	}
 
-    view_stats_bandwidth_increment(vs, atoi(rcode));
-    vs->count++;
+    view_stats_bandwidth_increment(vs, size);
+    if (hit_status == 0) {
+        view_stats_hit_bandwidth_increment(vs, size); 
+    }
+    else if (hit_status == 1)
+    {
+        view_stats_lost_bandwidth_increment(vs, size); 
+    }
 	pthread_mutex_unlock(&keeper->mlock);
 }
 char *get_view_id_base_on_ip(radix_tree_t *radix_tree, char *clientip)
@@ -136,15 +152,12 @@ char *get_view_id_base_on_ip(radix_tree_t *radix_tree, char *clientip)
 
 void handle_string_log(house_keeper_t *keeper , char *line)
 {
-    char *str1, *str2, *saveptr2, saveptr1;
-    char *ptr[100];
+    char *str2, *saveptr2;
     int i;
-    int len5;
     keeper->count++;
     char query_log[RECORD_LEN];
     strcpy(query_log, line);
-    for (i = 0; i< keeper->max_pos; i++)
-        ptr[i] = NULL;
+    char *ptr[100] = {NULL};
     for (i = 0 ,str2 = query_log; i < keeper->max_pos ; i++, str2 = NULL)
     {
         ptr[i] = strtok_r(str2, SP, &saveptr2);
@@ -153,31 +166,42 @@ void handle_string_log(house_keeper_t *keeper , char *line)
     }
     if (i < keeper->max_pos) 
         return;
+    char *hit_status = saveptr2 + strlen(saveptr2) - 5;
+    hit_status[strlen(hit_status) - 1] = '\0'; // remote \n
+    int hit_value = get_hit_status(hit_status);
     config_t *conf = keeper->conf;
     //printf("clientip: %s, domain: %s, status: %s, content: %s\n", ptr[conf->client_pos], ptr[conf->domain_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
-    if (strcmp(ptr[conf->client_pos], "-") != 0 && atoi(ptr[conf->content_pos]) > 0)
+
+    int32_t size = atoi(ptr[conf->content_pos]);
+    if (size <= 0 ) 
+      return; 
+
+    ptr[conf->status_pos][strlen(ptr[conf->status_pos]) - 1] = '\0';
+    strcpy(ptr[conf->status_pos], ptr[conf->status_pos] + 1);
+    if (hit_value != -1 && strcmp(ptr[conf->client_pos], "-") != 0 && atoi(ptr[conf->status_pos]) > 100 )
     {
+       
        char *view_id = get_view_id_base_on_ip(keeper->radix_tree, ptr[conf->client_pos]);
        if ( view_id )
        {
-       //printf("view id %s of client %s\n", view_id, ptr[conf->client_pos]);
-
        keeper->valid_count++;
-       if (conf->key_pos == conf->client_pos) 
-       {
-           log_handle(keeper, view_id, ptr[conf->domain_pos], ptr[conf->client_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
-           log_handle(keeper, "*", ptr[conf->domain_pos], ptr[conf->client_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
-       }
-       else
-       {
-           log_handle(keeper, ptr[conf->key_pos], view_id, ptr[conf->client_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
-           log_handle(keeper, "*", view_id, ptr[conf->client_pos], ptr[conf->status_pos], ptr[conf->content_pos]);
-       }
-       }
+       char temp_char[128];
+       sprintf(temp_char, "view:%s:%s", view_id, ptr[conf->domain_pos]);
+       log_handle(keeper, temp_char, ptr[conf->client_pos], view_id, ptr[conf->status_pos], size, hit_value);
+       } 
        else
        {
            printf("not find view of ip %s\n", ptr[conf->client_pos]);
        }
+       char temp_char[128];
+       sprintf(temp_char, "name:%s", ptr[conf->domain_pos]);
+       log_handle(keeper, temp_char, ptr[conf->client_pos], view_id, ptr[conf->status_pos], size, hit_value);
+
+       sprintf(temp_char, "code:%s", ptr[conf->status_pos]);
+       log_handle(keeper, temp_char, ptr[conf->client_pos], view_id, ptr[conf->status_pos], size, hit_value);
+    }
+    else {
+       printf("format error %s\n", line);
     }
 }
 
@@ -340,6 +364,7 @@ unsigned int return_all_views_qps(house_keeper_t *keeper,  char **buff)
     free(pqps);
     return len;
 }
+
 unsigned int return_all_views_bandwidth(house_keeper_t *keeper,  char **buff)
 {
     int n = keeper->views->count;
@@ -376,6 +401,76 @@ unsigned int return_all_views_bandwidth(house_keeper_t *keeper,  char **buff)
     *buff = result_ptr;
     free(pdata);
     free(pbandwidth);
+    return len;
+}
+
+unsigned int return_all_stats(house_keeper_t *keeper,  char **buff)
+{
+    int n = keeper->views->count;
+    StatsReply reply = STATS_REPLY__INIT;
+    reply.key = "stats_all";
+    char **pdata = malloc(sizeof (char *) * n);
+
+    int *prate= malloc(sizeof (int32_t ) * n);
+    int *paccess_count = malloc(sizeof (int32_t ) * n);
+    int *pbandwidth = malloc(sizeof (int32_t ) * n);
+    int *phit_count = malloc(sizeof (int32_t ) * n);
+    int *phit_bandwidth = malloc(sizeof (int32_t ) * n);
+    int *plost_count = malloc(sizeof (int32_t ) * n);
+    int *plost_bandwidth = malloc(sizeof (int32_t ) * n);
+      
+    rbnode_t *node;
+    int i = 0;
+    RBTREE_FOR(node, rbnode_t *, keeper->views->rbtree)
+    {
+       view_tree_node_t *tnode = (view_tree_node_t *)(node->value);
+       
+       if (strlen(tnode->name) == 0 )
+           continue;
+       unsigned int bw = view_stats_bandwidth(tnode->vs);
+       if ( bw != 0) 
+       {
+           pdata[i] = tnode->name;
+           pbandwidth[i] = bw;
+           prate[i] = tnode->vs->rate;
+           paccess_count[i] = tnode->vs->count;
+           phit_count[i] = tnode->vs->hit_count;
+           phit_bandwidth[i] = tnode->vs->hit_bandwidth;
+           plost_count[i] = tnode->vs->lost_count;
+           plost_bandwidth[i] = tnode->vs->lost_bandwidth;
+           view_stats_init(tnode->vs);
+           i++;
+       }
+    }
+    reply.n_name = i;
+    reply.name = pdata;
+    reply.n_rate = i;
+    reply.rate = prate;
+    reply.n_access_count = i;
+    reply.access_count = paccess_count;
+    reply.n_bandwidth = i;
+    reply.bandwidth = pbandwidth;
+    reply.n_hit_count = i;
+    reply.hit_count = phit_count;
+    reply.n_hit_bandwidth= i;
+    reply.hit_bandwidth = phit_bandwidth;
+    reply.n_lost_count = i;
+    reply.lost_count = plost_count;
+    reply.n_lost_bandwidth = i;
+    reply.lost_bandwidth = plost_bandwidth;
+
+    unsigned int len = stats_reply__get_packed_size(&reply);
+    char *result_ptr = malloc(sizeof(char) *len);
+    stats_reply__pack(&reply, result_ptr);
+    *buff = result_ptr;
+    free(pdata);
+    free(pbandwidth);
+    free(paccess_count);
+    free(prate);
+    free(phit_count);
+    free(phit_bandwidth);
+    free(plost_count);
+    free(plost_bandwidth);
     return len;
 }
 unsigned int return_all_views(house_keeper_t *keeper,  char **buff)
@@ -472,12 +567,8 @@ void *qps_thread(void *args)
                continue;
            view_stats_t *vs = tnode->vs;
            vs->qps = absolute_diff(vs->last_count, vs->count)*1.0 / timediff;
+           vs->rate = absolute_diff(vs->last_bandwidth, vs->bandwidth) * 1.0 /timediff;
            vs->last_count = vs->count;
-           if (vs->count == 0)
-               vs->success_rate  = 1.0;
-           else
-               vs->success_rate  = 1.0;
-               //vs->success_rate = absolute_diff(vs->rcode[stats_rcode_servfail], vs->count) * 1.0/ vs->count;
         }
 
         pthread_mutex_unlock(&keeper->mlock);
@@ -519,6 +610,10 @@ void *socket_thread(void *args)
         {
             rtn_msg_len = return_all_views(keeper, &result_ptr);
 		}
+        else if (strcmp(request->key, "stats_all") == 0)
+        {
+            rtn_msg_len = return_all_stats(keeper, &result_ptr);
+        }
         else if (strcmp(request->key, "bandwidth_all") == 0)
         {
             rtn_msg_len = return_all_views_bandwidth(keeper, &result_ptr);
@@ -552,12 +647,6 @@ void *socket_thread(void *args)
                }else if (strcmp(request->key, "iptopn") == 0)
                {
                    rtn_msg_len = view_stats_ip_topn(vs, topn, &result_ptr);
-               }else if (strcmp(request->key, "rcode") == 0)
-               {
-                   rtn_msg_len  = view_stats_get_rcode(vs, &result_ptr);
-               }else if (strcmp(request->key, "rtype") == 0)
-               {
-                   rtn_msg_len = view_stats_get_rtype(vs, &result_ptr);
                }else if (strcmp(request->key, "qps") == 0)
                {
                    rtn_msg_len = view_stats_get_qps(vs, &result_ptr);

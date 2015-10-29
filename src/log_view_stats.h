@@ -6,16 +6,21 @@
 #include "statsmessage.pb-c.h"
 #define MAX_VIEW_LENGTH 64
 struct view_stats {
+    // name can  be domain , or domain + view 
     char name[MAX_VIEW_LENGTH];
     name_tree_t *name_tree;
     name_tree_t *ip_tree;
     float qps;
     float success_rate;
+    float rate; 
     uint32_t count;
     uint32_t last_count;
-    uint32_t rcode[RCODE_MAX_NUM];
-    uint32_t rtype[RTYPE_MAX_NUM];
     uint64_t bandwidth;
+    uint32_t last_bandwidth;
+    uint32_t hit_count;
+    uint32_t hit_bandwidth;
+    uint32_t lost_count;
+    uint32_t lost_bandwidth;
 };
 
 typedef enum stats_type {
@@ -46,21 +51,17 @@ void view_stats_insert_ip(view_stats_t *vs, const char *ip);
 void view_stats_insert_name(view_stats_t *vs, const char *name);
 unsigned int view_stats_name_topn(view_stats_t *vs, int topn, char **buff);
 unsigned int view_stats_ip_topn(view_stats_t *vs, int topn, char **buff);
-unsigned int view_stats_get_rcode(view_stats_t *vs, char **buff);
-unsigned int view_stats_get_rtype(view_stats_t *vs, char **buff);
 unsigned int view_stats_get_success_rate(view_stats_t *vs, char **buff);
 unsigned int view_stats_get_qps(view_stats_t *vs, char **buff);
-void view_stats_rtype_increment(view_stats_t *vs, int rtype);
-void view_stats_rcode_increment(view_stats_t *vs, int rcode);
 void view_stats_set_memsize(view_stats_t *vs, uint64_t expect_size);
 void view_stats_bandwidth_increment(view_stats_t *vs, int content_size);
+void view_stats_hit_bandwidth_increment(view_stats_t *vs, int content_size);
+void view_stats_lost_bandwidth_increment(view_stats_t *vs, int content_size);
 unsigned int view_stats_bandwidth(view_stats_t *vs);
 
 unsigned int view_stats_get_bandwidth(view_stats_t *vs, char **buff);
 void view_stats_set_bandwidth(view_stats_t *vs, unsigned int bw);
-
-int rcode_index(const char *rcode);
-int rtype_index(const char *rtype);
+void view_stats_init(view_stats_t *vs);
 
 uint64_t view_stats_get_size(view_stats_t *vs);
 #endif
