@@ -150,6 +150,12 @@ char *get_view_id_base_on_ip(radix_tree_t *radix_tree, char *clientip)
     return (char *)id_node;
 }
 
+time_t get_timet(const char *timestr, const char *format)
+{
+    struct tm tmp;
+    strptime(timestr, format , &tmp); 
+    return mktime(&tmp);
+}
 void handle_string_log(house_keeper_t *keeper , char *line)
 {
     char *str2, *saveptr2;
@@ -175,6 +181,12 @@ void handle_string_log(house_keeper_t *keeper , char *line)
     int32_t size = atoi(ptr[conf->content_pos]);
     if (size <= 0 ) 
       return; 
+
+    if (ptr[conf->time_pos][0] == '[')
+    {
+        time_t ts = get_timet(ptr[conf->time_pos] + 1, conf->timeformat);
+        printf("unix time %ld\n", ts);
+    }
 
     ptr[conf->status_pos][strlen(ptr[conf->status_pos]) - 1] = '\0';
     strcpy(ptr[conf->status_pos], ptr[conf->status_pos] + 1);

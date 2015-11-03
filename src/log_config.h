@@ -12,6 +12,7 @@ struct config {
     char server_ip[32];
     char iplib_file[512];
     char monitor_log_file[512];
+    char timeformat[32];
     int port;
     int memory_recycle;
     int topn_stats;
@@ -20,6 +21,7 @@ struct config {
     int key_pos;
     int client_pos;
     int domain_pos;
+    int time_pos;
     int status_pos;
     int content_pos;
     float sample_rate;

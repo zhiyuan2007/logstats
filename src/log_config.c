@@ -72,6 +72,8 @@ config_t * config_create(const char *filename)
            conf->key_pos = atoi(p);
         else if (strcmp("client_pos", tempconf) == 0 )
            conf->client_pos = atoi(p);
+        else if (strcmp("time_pos", tempconf) == 0 )
+           conf->time_pos = atoi(p);
         else if (strcmp("domain_pos", tempconf) == 0 )
            conf->domain_pos = atoi(p);
         else if (strcmp("status_pos", tempconf) == 0 )
@@ -80,6 +82,8 @@ config_t * config_create(const char *filename)
            conf->content_pos = atoi(p);
         else if (strcmp("sample_rate", tempconf) == 0 )
            conf->sample_rate = atof(p);
+        else if (strcmp("timeformat", tempconf) == 0 )
+           strcpy(conf->timeformat, p);
     }
     fclose(fp);
     return conf;
