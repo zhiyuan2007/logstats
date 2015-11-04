@@ -69,9 +69,11 @@ again:    file = fopen(filename, "r");
     }
     int last_inode = get_inode(&sbuf);
     char strbuf[1024]; 
+    int count = 0;
 goon: while (NULL != fgets(strbuf, 1024, file)) 
     {
        handle_string_log(keeper, strbuf);
+       printf("count %d\n", count++);
     }
     if (feof(file))
     {
@@ -82,7 +84,8 @@ goon: while (NULL != fgets(strbuf, 1024, file))
             if (goon_stats == 0)
             {
                 fclose(file);
-                exit(0);
+                house_keeper_destroy(keeper);
+                return 0;
             }
             sleep(1);
             goto goon;
@@ -91,7 +94,10 @@ goon: while (NULL != fgets(strbuf, 1024, file))
         {
             fclose(file);
             if (goon_stats == 0)
-                exit(0);
+            {
+                house_keeper_destroy(keeper);
+                return 0;
+            }
             goto again;
         }
     }

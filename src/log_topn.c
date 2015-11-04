@@ -23,6 +23,7 @@
 #include "dig_radix_tree.h"
 #include "adlist.h"
 #include "log_topn.h"
+#include "dig_logger.h"
 #define RECORD_LEN 1024
 #define PART_LOG_LEN 768
 #define SP_NUM 50
@@ -98,9 +99,13 @@ int get_hit_status(const char *status)
     {
        return 1;
     }
+    else if (0 == strcmp(status, "EXPIRED"))
+    {
+       return 2;
+    }
     return -1;
 }
-void log_handle(house_keeper_t *keeper, const char *key, const char *ip, const char *view_id, const char *status, uint32_t size, int hit_status)
+void log_handle(house_keeper_t *keeper, const char *key, const char *ip, const char *view_id, const char *status, uint32_t size, int hit_status, const char *logline, int logornot)
 {
     ASSERT(keeper && key && ip ,"invalid pointer\n");
     //sample 
@@ -134,6 +139,15 @@ void log_handle(house_keeper_t *keeper, const char *key, const char *ip, const c
 		lru_list_move_to_first(keeper->views->lrulist, vtnode->ptr); 
 	}
 
+    if (logornot && vs->logger == NULL)
+    {
+        vs->logger = create_logger(keeper->conf->home_dir, strchr(key, ':')+1, keeper->conf->max_file_count, keeper->conf->file_size_limit); 
+        if (!vs->logger)
+        {
+            printf("create logger failed\n");
+        }
+    }
+
     view_stats_bandwidth_increment(vs, size);
     if (hit_status == 0) {
         view_stats_hit_bandwidth_increment(vs, size); 
@@ -141,6 +155,11 @@ void log_handle(house_keeper_t *keeper, const char *key, const char *ip, const c
     else if (hit_status == 1)
     {
         view_stats_lost_bandwidth_increment(vs, size); 
+    }
+
+    if (logornot)
+    {
+        log_msg(vs->logger, logline);
     }
 	pthread_mutex_unlock(&keeper->mlock);
 }
@@ -182,11 +201,12 @@ void handle_string_log(house_keeper_t *keeper , char *line)
     if (size <= 0 ) 
       return; 
 
-    if (ptr[conf->time_pos][0] == '[')
+    /*if (ptr[conf->time_pos][0] == '[')
     {
         time_t ts = get_timet(ptr[conf->time_pos] + 1, conf->timeformat);
-        printf("unix time %ld\n", ts);
+        //printf("unix time %ld\n", ts);
     }
+    */
 
     ptr[conf->status_pos][strlen(ptr[conf->status_pos]) - 1] = '\0';
     strcpy(ptr[conf->status_pos], ptr[conf->status_pos] + 1);
@@ -199,7 +219,7 @@ void handle_string_log(house_keeper_t *keeper , char *line)
        keeper->valid_count++;
        char temp_char[128];
        sprintf(temp_char, "view:%s:%s", view_id, ptr[conf->domain_pos]);
-       log_handle(keeper, temp_char, ptr[conf->client_pos], view_id, ptr[conf->status_pos], size, hit_value);
+       log_handle(keeper, temp_char, ptr[conf->client_pos], view_id, ptr[conf->status_pos], size, hit_value, NULL, 0);
        } 
        else
        {
@@ -207,10 +227,10 @@ void handle_string_log(house_keeper_t *keeper , char *line)
        }
        char temp_char[128];
        sprintf(temp_char, "name:%s", ptr[conf->domain_pos]);
-       log_handle(keeper, temp_char, ptr[conf->client_pos], view_id, ptr[conf->status_pos], size, hit_value);
+       log_handle(keeper, temp_char, ptr[conf->client_pos], view_id, ptr[conf->status_pos], size, hit_value, line, conf->enable_auto);
 
        sprintf(temp_char, "code:%s", ptr[conf->status_pos]);
-       log_handle(keeper, temp_char, ptr[conf->client_pos], view_id, ptr[conf->status_pos], size, hit_value);
+       log_handle(keeper, temp_char, ptr[conf->client_pos], view_id, ptr[conf->status_pos], size, hit_value, NULL, 0);
     }
     else {
        printf("format error %s\n", line);

@@ -4,6 +4,7 @@
 #include "log_name_tree.h"
 #include "log_utils.h"
 #include "log_heap.h"
+#include "dig_logger.h"
 #include "statsmessage.pb-c.h"
 char *RCODE[RCODE_MAX_NUM] = {
     "NOERROR",
@@ -49,6 +50,7 @@ view_stats_t *view_stats_create(const char *view_name)
 
     vs->qps = 0.0;
     vs->success_rate = 1.0;
+    vs->logger = NULL;
     view_stats_init(vs);
     strcpy(vs->name, view_name);
 }
@@ -88,6 +90,8 @@ void view_stats_destory(view_stats_t *vs)
     ASSERT(vs, "empty pointer when destory view stats\n");
     name_tree_destroy(vs->name_tree);
     name_tree_destroy(vs->ip_tree);
+    if (vs->logger)
+        delete_logger(vs->logger); 
     free(vs);
 }
 

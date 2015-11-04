@@ -24,6 +24,7 @@ config_t * config_create(const char *filename)
     conf->topn_stats = 0; 
     conf->memory_recycle = 0;
     conf->sample_rate = 1.0;
+    conf->enable_auto = 0;
     char tempconf[1024];
     while(fgets(tempconf, 1024, fp))
     {
@@ -58,6 +59,8 @@ config_t * config_create(const char *filename)
            strcpy(conf->server_ip, p);
         else if (strcmp("iplib_file", tempconf) == 0 )
            strcpy(conf->iplib_file, p);
+        else if (strcmp("read_from_end", tempconf) == 0 )
+          conf->read_from_end = atoi(p);
         else if (strcmp("monitor_log_file", tempconf) == 0 )
            strcpy(conf->monitor_log_file, p);
         else if (strcmp("memory_recycle", tempconf) == 0 )

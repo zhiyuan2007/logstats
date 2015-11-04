@@ -3,6 +3,7 @@
 #define RCODE_MAX_NUM 7
 #define RTYPE_MAX_NUM 12
 #include "log_name_tree.h"
+#include "dig_logger.h"
 #include "statsmessage.pb-c.h"
 #define MAX_VIEW_LENGTH 64
 struct view_stats {
@@ -10,6 +11,7 @@ struct view_stats {
     char name[MAX_VIEW_LENGTH];
     name_tree_t *name_tree;
     name_tree_t *ip_tree;
+    zddi_logger_t *logger;
     float qps;
     float success_rate;
     float rate; 

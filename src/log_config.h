@@ -13,6 +13,7 @@ struct config {
     char iplib_file[512];
     char monitor_log_file[512];
     char timeformat[32];
+    int read_from_end;
     int port;
     int memory_recycle;
     int topn_stats;
