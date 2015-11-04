@@ -187,15 +187,18 @@ class Log_analy():
          reply = self._send_request(req)
          all_stats = {}
          for i in range(len(reply.name)):
-             name = reply.name[i]
-             all_stats[name] = {}
-             all_stats[name]['rate'] = reply.rate[i] 
-             all_stats[name]['bandwidth'] = reply.bandwidth[i] 
-             all_stats[name]['access_count'] = reply.access_count[i] 
-             all_stats[name]['hit_count'] = reply.hit_count[i] 
-             all_stats[name]['hit_bandwidth'] = reply.hit_bandwidth[i] 
-             all_stats[name]['lost_count'] = reply.lost_count[i] 
-             all_stats[name]['lost_bandwidth'] = reply.lost_bandwidth[i] 
+             type, name = reply.name[i].split(":", 1)
+             if not all_stats.get(type, None):
+                 all_stats[type] = {}
+             if not all_stats[type].get(name, None):
+                 all_stats[type][name] = {}
+             all_stats[type][name]['rate'] = reply.rate[i] 
+             all_stats[type][name]['bandwidth'] = reply.bandwidth[i] 
+             all_stats[type][name]['access_count'] = reply.access_count[i] 
+             all_stats[type][name]['hit_count'] = reply.hit_count[i] 
+             all_stats[type][name]['hit_bandwidth'] = reply.hit_bandwidth[i] 
+             all_stats[type][name]['lost_count'] = reply.lost_count[i] 
+             all_stats[type][name]['lost_bandwidth'] = reply.lost_bandwidth[i] 
          return all_stats
 
      def get_views(self):

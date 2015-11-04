@@ -99,7 +99,7 @@ int get_hit_status(const char *status)
     {
        return 1;
     }
-    else if (0 == strcmp(status, "EXPIRED"))
+    else if (0 == strcmp(status, "IRED"))
     {
        return 2;
     }
