@@ -229,7 +229,7 @@ void handle_string_log(house_keeper_t *keeper , char *line)
        sprintf(temp_char, "name:%s", ptr[conf->domain_pos]);
        log_handle(keeper, temp_char, ptr[conf->client_pos], view_id, ptr[conf->status_pos], size, hit_value, line, conf->enable_auto);
 
-       sprintf(temp_char, "code:%s", ptr[conf->status_pos]);
+       sprintf(temp_char, "code:%s:%s", ptr[conf->domain_pos], ptr[conf->status_pos]);
        log_handle(keeper, temp_char, ptr[conf->client_pos], view_id, ptr[conf->status_pos], size, hit_value, NULL, 0);
     }
     else {
