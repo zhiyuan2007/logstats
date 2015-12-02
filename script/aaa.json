@@ -1,0 +1,110 @@
+[
+ [
+  {
+   "status": [
+    {
+     "count": 2, 
+     "flux": 571, 
+     "rate": 9, 
+     "status_id": "200"
+    }
+   ], 
+   "count": 2, 
+   "domain": "status.dl.qihucdn.com", 
+   "hit_count": 2, 
+   "miss_count": 0, 
+   "flux": 571, 
+   "rate": 9, 
+   "logtime": "2015-11-13 00:00:00", 
+   "distribution": [
+    {
+     "count": 1, 
+     "view_id": "49", 
+     "flux": 283, 
+     "rate": 4, 
+     "hit_count": 1, 
+     "hit_flux": 283
+    }, 
+    {
+     "count": 1, 
+     "view_id": "50", 
+     "flux": 288, 
+     "rate": 4, 
+     "hit_count": 1, 
+     "hit_flux": 288
+    }
+   ], 
+   "hit_flux": 571, 
+   "miss_flux": 0
+  }, 
+  {
+   "status": [
+    {
+     "count": 7, 
+     "flux": 70231, 
+     "rate": 1170, 
+     "status_id": "206"
+    }
+   ], 
+   "count": 7, 
+   "domain": "rg07.sycdn.kuwo.cn", 
+   "hit_count": 0, 
+   "miss_count": 7, 
+   "flux": 70231, 
+   "rate": 1170, 
+   "logtime": "2015-11-13 00:00:00", 
+   "distribution": [
+    {
+     "count": 4, 
+     "view_id": "49", 
+     "flux": 51837, 
+     "rate": 863, 
+     "hit_count": 0, 
+     "hit_flux": 0
+    }, 
+    {
+     "count": 3, 
+     "view_id": "50", 
+     "flux": 18394, 
+     "rate": 306, 
+     "hit_count": 0, 
+     "hit_flux": 0
+    }
+   ], 
+   "hit_flux": 0, 
+   "miss_flux": 70231
+  }
+ ], 
+ [
+  {
+   "status": [
+    {
+     "count": 1, 
+     "flux": 17038, 
+     "rate": 283, 
+     "status_id": "206"
+    }
+   ], 
+   "count": 1, 
+   "domain": "rg07.sycdn.kuwo.cn", 
+   "hit_count": 0, 
+   "miss_count": 1, 
+   "flux": 17038, 
+   "rate": 283, 
+   "logtime": "2015-11-13 00:01:00", 
+   "distribution": [
+    {
+     "count": 1, 
+     "view_id": "49", 
+     "flux": 17038, 
+     "rate": 283, 
+     "hit_count": 0, 
+     "hit_flux": 0
+    }
+   ], 
+   "hit_flux": 0, 
+   "miss_flux": 17038
+  }
+ ]
+]
+

@@ -1,0 +1,91 @@
+#!/bin/bash
+function process_mgr() {
+pid1=`ps aux|grep log_main|grep -v grep|awk '{print $2}'`
+if [ "xx$pid1" == "xx" ]
+then
+    if [ $1 == "restart" ] || [ $1 == "start" ]
+    then
+    echo "log main not exists, restart..."
+    nohup ./log_main stats.conf >> /var/log/logstats/log_main.log 2>&1 &
+    fi
+else
+    if [ $1 == "restart" ] 
+    then
+    echo "log main is still exists, kill and restart..."
+    kill -9 $pid1
+    nohup ./log_main stats.conf >> /var/log/logstats/log_main.log 2>&1 &
+    elif [ $1 == "stop" ]
+    then
+    echo "killed logmain..."
+    kill -9 $pid1
+    fi
+fi
+}
+function process_mgr1() {
+pid2=`ps aux|grep logser_client.py|grep -v grep|awk '{print $2}'`
+if [ "xx$pid2" == "xx" ]
+then
+    if [ $1 == "restart" ] || [ $1 == "start" ]
+    then
+    echo "logser_client.py not exists, restart..."
+    nohup python logser_client.py $2 $3 $4>> /var/log/logstats/logser_client.log 2>&1 &
+    fi
+else
+    if [ $1 == "restart" ] 
+    then
+    echo "logser_client.py is still exists, kill and restart..."
+    kill -9 $pid2
+    nohup python logser_client.py $2 $3 $4 >> /var/log/logstats/logser_client.log 2>&1 &
+    elif [ $1 == "stop" ]
+    then
+    echo "kill logser_client.py..."
+    kill -9 $pid2
+    fi
+fi
+}
+
+function process_mgr2() {
+pid2=`ps aux|grep compress_log_file.py|grep -v grep|awk '{print $2}'`
+if [ "xx$pid2" == "xx" ]
+then
+    if [ $1 == "restart" ] || [ $1 == "start" ]
+    then
+    echo "compress_log_file.py not exists, restart..."
+    nohup python compress_log_file.py $2 $3 $4>> /var/log/logstats/compress_log_file.log 2>&1 &
+    fi
+else
+    if [ $1 == "restart" ] 
+    then
+    echo "compress_log_file.py is still exists, kill and restart..."
+    kill -9 $pid2
+    nohup python compress_log_file.py $2 $3 $4 >> /var/log/logstats/compress_log_file.log 2>&1 &
+    elif [ $1 == "stop" ]
+    then
+    echo "kill compress_log_file.py..."
+    kill -9 $pid2
+    fi
+fi
+}
+
+
+if [ $# == 1 ]
+then
+    post_url=http://log01.cdn.zzbc2.qihoo.net:8686/stats_report/upload_cdn_log_stats.php
+    stats_dir=/data02/logstats/stats
+    stats_backup_dir=/data02/logstats/backup
+
+    dir="/upload/1/logs"
+    middle_dir="/upload/ready"
+    upload_dir="/upload/rsync/gz_upload"
+
+    cd /usr/local/logstats
+    export PATH=$PATH:/usr/bin/:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin/:/sbin
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+    process_mgr $1
+    process_mgr1 $1 $post_url $stats_dir $stats_backup_dir
+    process_mgr2 $1 $dir $middle_dir $upload_dir
+else
+    echo "usage: restart_logserver start|stop|restart"
+fi
+
+

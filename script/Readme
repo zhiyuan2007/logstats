@@ -1,0 +1,4 @@
+reset logger command format as follows:
+header=logger
+body=file_prefix:max_file_count:file_limit\0
+exmaple: logger:query_log:10:10\0
